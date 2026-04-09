@@ -3968,4 +3968,3 @@ export default function App() {
     </div>
   );
 }
-git --version
