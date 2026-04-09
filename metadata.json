@@ -1,0 +1,5 @@
+{
+  "name": "Brillo",
+  "description": "Système de gestion de caisse pour station de lavage auto/moto",
+  "requestFramePermissions": []
+}
