@@ -855,12 +855,12 @@ export default function App() {
 
             {loginError && <p className="text-red-500 text-xs font-bold text-center">{loginError}</p>}
 
-            <button
-              type="submit"
-              className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-blue-100 active:scale-95 transition-transform"
-            >
-              Se connecter
-            </button>
+           <button
+  type="submit"
+  className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold"
+>
+  Se connecter
+</button>
           </form>
         </motion.div>
       </div>
