@@ -885,31 +885,27 @@ export default function App() {
   {/* Le reste de ton bouton de profil / déconnexion */}
 </header>
             <p className="text-[10px] text-slate-400 font-bold uppercase leading-none">{user.role === 'super_manager' ? 'Super Manager' : user.tenant_name || user.role}</p>
-            <p className="text-sm font-bold text-slate-800">{user.username}</p>
-          </div>
-        </div>
+           <p className="text-sm font-bold text-slate-800">{user.username}</p>
+           </div>
+         </div>
+       </header>
 
-        <div className="flex items-center gap-6">
-             {/* Tes éléments d'en-tête (ex: logo, nom) vont ici */}
-          </div>
-        </header>
-
-        <main className="flex-1 overflow-y-auto pb-24">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={view}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="p-4"
-            >
-              {view === 'pos' && renderPOS()}
-              {view === 'stats' && renderStats()}
-              {view === 'history' && renderHistory()}
-              {view === 'super_dashboard' && renderSuperDashboard()}
-            </motion.div>
-          </AnimatePresence>
-        </main>
+       <main className="flex-1 overflow-y-auto pb-24">
+         <AnimatePresence mode="wait">
+           <motion.div
+             key={view}
+             initial={{ opacity: 0, y: 10 }}
+             animate={{ opacity: 1, y: 0 }}
+             exit={{ opacity: 0, y: -10 }}
+             className="p-4"
+           >
+             {view === 'pos' && renderPOS()}
+             {view === 'stats' && renderStats()}
+             {view === 'history' && renderHistory()}
+             {view === 'super_dashboard' && renderSuperDashboard()}
+           </motion.div>
+         </AnimatePresence>
+       </main>
 
         <nav className="bg-white/80 backdrop-blur-md border-t border-slate-100 px-6 py-3 flex justify-between items-center fixed bottom-0 left-0 right-0 z-40">
            <NavButton 
