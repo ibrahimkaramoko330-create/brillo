@@ -811,13 +811,18 @@ export default function App() {
           className="bg-white w-full max-w-md p-8 rounded-[2.5rem] shadow-2xl"
         >
           <div className="text-center mb-8">
-            <div className="w-20 h-20 bg-blue-50 rounded-[2rem] flex items-center justify-center mx-auto mb-4 text-blue-600 shadow-inner relative overflow-hidden">
-              <Sparkles className="w-10 h-10 relative z-10" />
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-400/10 to-transparent" />
-            </div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase italic">Brillo</h1>
-            <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Lavage Auto & Moto</p>
-          </div>
+  <div className="w-20 h-20 bg-blue-50 rounded-[2rem] flex items-center justify-center mx-auto mb-4 relative overflow-hidden shadow-inner">
+    {/* AJOUT DU LOGO ICI */}
+    <img 
+      src="/favicon-io.zip/android-chrome-512x512.png" 
+      alt="Brillo Logo" 
+      className="w-16 h-16 object-contain relative z-10" 
+    />
+    <div className="absolute inset-0 bg-gradient-to-br from-blue-400/10 to-transparent" />
+  </div>
+  <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase italic">Brillo</h1>
+  <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Lavage Auto & Moto</p>
+</div>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-1">
@@ -866,12 +871,19 @@ export default function App() {
     <div className="fixed inset-0 bg-[#F8FAFC] font-sans text-slate-900 flex flex-col overflow-hidden">
 
       {/* Compact Top Bar */}
-      <header className="bg-white px-4 py-3 flex items-center justify-between border-b border-slate-100 shadow-sm z-20">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 border border-slate-100">
-            <User className="w-4 h-4" />
-          </div>
-          <div>
+     <header className="bg-white px-4 py-3 flex items-center justify-between border-b border-slate-100">
+  <div className="flex items-center gap-3">
+    <img 
+  src="/android-chrome-512x512.png" 
+  alt="Logo" 
+  className="w-16 h-16 object-contain relative z-10" 
+/>
+    <h1 className="text-xl font-black text-slate-900 tracking-tighter uppercase italic">
+      Brillo
+    </h1>
+  </div>
+  {/* Le reste de ton bouton de profil / déconnexion */}
+</header>
             <p className="text-[10px] text-slate-400 font-bold uppercase leading-none">{user.role === 'super_manager' ? 'Super Manager' : user.tenant_name || user.role}</p>
             <p className="text-sm font-bold text-slate-800">{user.username}</p>
           </div>
