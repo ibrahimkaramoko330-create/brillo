@@ -890,45 +890,54 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-6">
-          {(showTenantSuccess || showUserSuccess) && createdCredentials && (
+             {/* Tes éléments d'en-tête (ex: logo, nom) vont ici */}
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-y-auto pb-24">
+          <AnimatePresence mode="wait">
             <motion.div
-              initial={{ opacity: 0, y: -20 }}
+              key={view}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-emerald-500 text-white px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 shadow-lg shadow-emerald-100"
+              exit={{ opacity: 0, y: -10 }}
+              className="p-4"
             >
-              <CheckCircle2 className="w-4 h-4" />
-              <div>
-                <p>Compte créé avec succès !</p>
-                <p className="text-[8px] opacity-80">Login: {createdCredentials.u} / Pass: {createdCredentials.p}</p>
-              </div>
-              <button onClick={() => { setShowTenantSuccess(false); setShowUserSuccess(false); setCreatedCredentials(null); }}>
-                <X className="w-3 h-3" />
-              </button>
+              {view === 'pos' && renderPOS()}
+              {view === 'stats' && renderStats()}
+              {view === 'history' && renderHistory()}
+              {view === 'super_dashboard' && renderSuperDashboard()}
             </motion.div>
-          )}
-          {showTenantSuccess && !createdCredentials && user.role === 'super_manager' && (
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border border-emerald-100"
-            >
-              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-              Entreprise Créée
-            </motion.div>
-          )}
-          {user.role === 'cashier' && (
-            <div className="text-right border-r border-slate-100 pr-4">
-              <p className="text-[10px] text-slate-400 font-black uppercase leading-none mb-1">Caisse Jour</p>
-              <p className="text-sm font-black text-blue-600 tracking-tight">
-                {(stats.dailyRevenue - stats.dailyExpenses).toLocaleString()} <span className="text-[10px]">F</span>
-              </p>
-            </div>
-          )}
-          <button onClick={handleLogout} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
-            <LogOut className="w-5 h-5" />
-          </button>
-        </div>
-      </header>
+          </AnimatePresence>
+        </main>
+
+        <nav className="bg-white/80 backdrop-blur-md border-t border-slate-100 px-6 py-3 flex justify-between items-center fixed bottom-0 left-0 right-0 z-40">
+           <NavButton 
+             active={view === 'pos'} 
+             onClick={() => setView('pos')} 
+             icon={<LayoutDashboard />} 
+             label="Caisse" 
+           />
+           <NavButton 
+             active={view === 'history'} 
+             onClick={() => setView('history')} 
+             icon={<HistoryIcon />} 
+             label="Activités" 
+           />
+        </nav>
+      </div>
+    );
+} // Fermeture de la fonction App
+
+// N'oublie pas de définir NavButton si ce n'est pas fait plus bas
+function NavButton({ active, onClick, icon, label }: any) {
+  return (
+    <button onClick={onClick} className={`flex flex-col items-center gap-1 ${active ? 'text-blue-600' : 'text-slate-400'}`}>
+      {React.cloneElement(icon, { className: 'w-6 h-6' })}
+      <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
+    </button>
+  );
+}
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-hidden relative">
