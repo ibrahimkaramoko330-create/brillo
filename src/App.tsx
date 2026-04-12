@@ -2,16 +2,16 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { 
   User, 
   LogIn,
-  LogOut,
-  Search,
-  Bike,
-  Car,
-  Truck,
-  Droplets,
-  Sparkles,
-  Settings,
-  Eraser,
-  Banknote,
+  LogOut, 
+  Search, 
+  Bike, 
+  Car, 
+  Truck, 
+  Droplets, 
+  Sparkles, 
+  Settings, 
+  Eraser, 
+  Banknote, 
   CheckCircle2,
   TrendingUp,
   History as HistoryIcon,
@@ -43,16 +43,16 @@ import {
   Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import {
+import { 
   BarChart,
   AreaChart,
   Area,
   ComposedChart,
   Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
   ResponsiveContainer,
   PieChart,
   Pie,
@@ -173,7 +173,7 @@ export default function App() {
     washerStats: { name: string; count: number; revenue: number }[];
     dailyHistory: { date: string; revenue: number; count: number }[];
   }>({ dailyRevenue: 0, dailyExpenses: 0, totalTransactions: 0, periodRevenue: 0, periodExpenses: 0, washerStats: [], dailyHistory: [] });
-
+  
   // --- POS State ---
   const [matricule, setMatricule] = useState('');
   const [phone, setPhone] = useState('');
@@ -390,23 +390,23 @@ export default function App() {
       params.append('endDate', end);
     }
     if (tenantId && tenantId !== 'all') params.append('tenant_id', tenantId);
-
+    
     query = params.toString() ? `?${params.toString()}` : '';
 
     const [tRes, eRes] = await Promise.all([
       fetch(`/api/transactions${query}`, { headers: { Authorization: `Bearer ${token}` } }),
       fetch(`/api/expenses${query}`, { headers: { Authorization: `Bearer ${token}` } })
     ]);
-
+    
     if (tRes.ok && eRes.ok) {
       const transactions = await tRes.json();
       const expenses = await eRes.json();
-
+      
       const merged = [
         ...transactions.map((t: any) => ({ ...t, type: 'transaction' })),
         ...expenses.map((e: any) => ({ ...e, type: 'expense' }))
       ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
+      
       setHistoryData(merged);
     }
   };
@@ -416,14 +416,14 @@ export default function App() {
     const s = start || managerStartDate;
     const e = end || managerEndDate;
     const c = cashierId || selectedCashierId;
-
+    
     let url = `/api/stats?period=${p}`;
     if (tenantId) url += `&tenant_id=${tenantId}`;
     if (c && c !== 'all') url += `&cashier_id=${c}`;
     if (p === 'custom' && s && e) {
       url += `&startDate=${s}&endDate=${e}`;
     }
-
+    
     const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     if (res.ok) setStats(await res.json());
   };
@@ -506,7 +506,7 @@ export default function App() {
   const exportToCSV = (data: any[], filename: string) => {
     if (data.length === 0) return;
     const headers = Object.keys(data[0]).join(',');
-    const rows = data.map(row =>
+    const rows = data.map(row => 
       Object.values(row).map(val => `"${val}"`).join(',')
     ).join('\n');
     const csvContent = `data:text/csv;charset=utf-8,${headers}\n${rows}`;
@@ -521,7 +521,7 @@ export default function App() {
 
   const globalStats = useMemo(() => {
     let filteredTransactions = allTransactions;
-
+    
     if (selectedDashboardTenant !== 'all') {
       filteredTransactions = filteredTransactions.filter(t => t.tenant_id === selectedDashboardTenant);
     }
@@ -606,7 +606,7 @@ export default function App() {
       setShowSuccess(true);
       fetchHistory();
       fetchStats();
-
+      
       setTimeout(() => {
         setShowSuccess(false);
         setMatricule('');
@@ -625,13 +625,13 @@ export default function App() {
     return historyData.filter((item: any) => {
       if (item.type === 'expense') {
         return (
-          item.description.toLowerCase().includes(q) ||
+          item.description.toLowerCase().includes(q) || 
           (item.category && item.category.toLowerCase().includes(q)) ||
           (item.cashier_name && item.cashier_name.toLowerCase().includes(q))
         );
       }
       return (
-        item.matricule.toLowerCase().includes(q) ||
+        item.matricule.toLowerCase().includes(q) || 
         (item.phone && item.phone.includes(q)) ||
         (item.washer_name && item.washer_name.toLowerCase().includes(q)) ||
         (item.cashier_name && item.cashier_name.toLowerCase().includes(q)) ||
@@ -805,32 +805,27 @@ export default function App() {
   if (!user) {
     return (
       <div className="fixed inset-0 bg-blue-600 flex items-center justify-center p-4">
-        <motion.div
+        <motion.div 
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           className="bg-white w-full max-w-md p-8 rounded-[2.5rem] shadow-2xl"
         >
           <div className="text-center mb-8">
-  <div className="w-20 h-20 bg-blue-50 rounded-[2rem] flex items-center justify-center mx-auto mb-4 relative overflow-hidden shadow-inner">
-    {/* AJOUT DU LOGO ICI */}
-    <img 
-      src="/favicon-io.zip/android-chrome-512x512.png" 
-      alt="Brillo Logo" 
-      className="w-16 h-16 object-contain relative z-10" 
-    />
-    <div className="absolute inset-0 bg-gradient-to-br from-blue-400/10 to-transparent" />
-  </div>
-  <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase italic">Brillo</h1>
-  <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Lavage Auto & Moto</p>
-</div>
+            <div className="w-20 h-20 bg-blue-50 rounded-[2rem] flex items-center justify-center mx-auto mb-4 text-blue-600 shadow-inner relative overflow-hidden">
+              <Sparkles className="w-10 h-10 relative z-10" />
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-400/10 to-transparent" />
+            </div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase italic">Brillo</h1>
+            <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Lavage Auto & Moto</p>
+          </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Utilisateur</label>
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
-                <input
-                  type="text"
+                <input 
+                  type="text" 
                   value={loginUsername}
                   onChange={(e) => setLoginUsername(e.target.value)}
                   className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-blue-600 transition-colors text-slate-900 font-bold"
@@ -843,8 +838,8 @@ export default function App() {
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Mot de passe</label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
-                <input
-                  type="password"
+                <input 
+                  type="password" 
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-blue-600 transition-colors text-slate-900 font-bold"
@@ -855,12 +850,12 @@ export default function App() {
 
             {loginError && <p className="text-red-500 text-xs font-bold text-center">{loginError}</p>}
 
-           <button
-  type="submit"
-  className="w-full py-4 bg-blue-600 text-white rounded-2xl font-bold"
->
-  Se connecter
-</button>
+            <button 
+              type="submit"
+              className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-blue-100 active:scale-95 transition-transform"
+            >
+              Se connecter
+            </button>
           </form>
         </motion.div>
       </div>
@@ -869,77 +864,65 @@ export default function App() {
 
   return (
     <div className="fixed inset-0 bg-[#F8FAFC] font-sans text-slate-900 flex flex-col overflow-hidden">
-
+      
       {/* Compact Top Bar */}
-     <header className="bg-white px-4 py-3 flex items-center justify-between border-b border-slate-100">
-  <div className="flex items-center gap-3">
-    <img 
-  src="/android-chrome-512x512.png" 
-  alt="Logo" 
-  className="w-16 h-16 object-contain relative z-10" 
-/>
-    <h1 className="text-xl font-black text-slate-900 tracking-tighter uppercase italic">
-      Brillo
-    </h1>
-  </div>
-  {/* Le reste de ton bouton de profil / déconnexion */}
-</header>
+      <header className="bg-white px-4 py-3 flex items-center justify-between border-b border-slate-100 shadow-sm z-20">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 border border-slate-100">
+            <User className="w-4 h-4" />
+          </div>
+          <div>
             <p className="text-[10px] text-slate-400 font-bold uppercase leading-none">{user.role === 'super_manager' ? 'Super Manager' : user.tenant_name || user.role}</p>
-           <p className="text-sm font-bold text-slate-800">{user.username}</p>
-           </div>
-         </div>
-       </header>
+            <p className="text-sm font-bold text-slate-800">{user.username}</p>
+          </div>
+        </div>
 
-       <main className="flex-1 overflow-y-auto pb-24">
-         <AnimatePresence mode="wait">
-           <motion.div
-             key={view}
-             initial={{ opacity: 0, y: 10 }}
-             animate={{ opacity: 1, y: 0 }}
-             exit={{ opacity: 0, y: -10 }}
-             className="p-4"
-           >
-             {view === 'pos' && renderPOS()}
-             {view === 'stats' && renderStats()}
-             {view === 'history' && renderHistory()}
-             {view === 'super_dashboard' && renderSuperDashboard()}
-           </motion.div>
-         </AnimatePresence>
-       </main>
-
-        <nav className="bg-white/80 backdrop-blur-md border-t border-slate-100 px-6 py-3 flex justify-between items-center fixed bottom-0 left-0 right-0 z-40">
-           <NavButton 
-             active={view === 'pos'} 
-             onClick={() => setView('pos')} 
-             icon={<LayoutDashboard />} 
-             label="Caisse" 
-           />
-           <NavButton 
-             active={view === 'history'} 
-             onClick={() => setView('history')} 
-             icon={<HistoryIcon />} 
-             label="Activités" 
-           />
-        </nav>
-      </div>
-    );
-} // Fermeture de la fonction App
-
-// N'oublie pas de définir NavButton si ce n'est pas fait plus bas
-function NavButton({ active, onClick, icon, label }: any) {
-  return (
-    <button onClick={onClick} className={`flex flex-col items-center gap-1 ${active ? 'text-blue-600' : 'text-slate-400'}`}>
-      {React.cloneElement(icon, { className: 'w-6 h-6' })}
-      <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
-    </button>
-  );
-}
+        <div className="flex items-center gap-6">
+          {(showTenantSuccess || showUserSuccess) && createdCredentials && (
+            <motion.div 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-emerald-500 text-white px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 shadow-lg shadow-emerald-100"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              <div>
+                <p>Compte créé avec succès !</p>
+                <p className="text-[8px] opacity-80">Login: {createdCredentials.u} / Pass: {createdCredentials.p}</p>
+              </div>
+              <button onClick={() => { setShowTenantSuccess(false); setShowUserSuccess(false); setCreatedCredentials(null); }}>
+                <X className="w-3 h-3" />
+              </button>
+            </motion.div>
+          )}
+          {showTenantSuccess && !createdCredentials && user.role === 'super_manager' && (
+            <motion.div 
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border border-emerald-100"
+            >
+              <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+              Entreprise Créée
+            </motion.div>
+          )}
+          {user.role === 'cashier' && (
+            <div className="text-right border-r border-slate-100 pr-4">
+              <p className="text-[10px] text-slate-400 font-black uppercase leading-none mb-1">Caisse Jour</p>
+              <p className="text-sm font-black text-blue-600 tracking-tight">
+                {(stats.dailyRevenue - stats.dailyExpenses).toLocaleString()} <span className="text-[10px]">F</span>
+              </p>
+            </div>
+          )}
+          <button onClick={handleLogout} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
+            <LogOut className="w-5 h-5" />
+          </button>
+        </div>
+      </header>
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-hidden relative">
         <AnimatePresence mode="wait">
           {view === 'pos' && user.role !== 'manager' && user.role !== 'super_manager' && (
-            <motion.main
+            <motion.main 
               key="pos"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -952,7 +935,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 block">
                     Matricule
                   </label>
-                  <input
+                  <input 
                     type="text"
                     placeholder="AB-123-CD"
                     value={matricule}
@@ -966,7 +949,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 block">
                       Marque
                     </label>
-                    <select
+                    <select 
                       value={selectedBrand}
                       onChange={(e) => setSelectedBrand(e.target.value)}
                       className="w-full text-lg font-black tracking-tighter text-slate-900 bg-transparent outline-none appearance-none"
@@ -986,7 +969,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                 </label>
                 <div className="flex items-center gap-2">
                   <Phone className="w-3 h-3 text-slate-300" />
-                  <input
+                  <input 
                     type="tel"
                     placeholder="07..."
                     value={phone}
@@ -1008,8 +991,8 @@ function NavButton({ active, onClick, icon, label }: any) {
                       type="button"
                       onClick={() => setSelectedVehicleId(v.id)}
                       className={`flex-shrink-0 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 transition-all ${
-                        selectedVehicleId === v.id
-                          ? 'border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-100'
+                        selectedVehicleId === v.id 
+                          ? 'border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-100' 
                           : 'border-white bg-white text-slate-400 shadow-sm'
                       }`}
                     >
@@ -1032,8 +1015,8 @@ function NavButton({ active, onClick, icon, label }: any) {
                       type="button"
                       onClick={() => setSelectedWasherId(w.id)}
                       className={`flex-shrink-0 flex items-center gap-2 py-2 px-4 rounded-xl border-2 transition-all ${
-                        selectedWasherId === w.id
-                          ? 'border-blue-600 bg-blue-600 text-white shadow-md'
+                        selectedWasherId === w.id 
+                          ? 'border-blue-600 bg-blue-600 text-white shadow-md' 
                           : 'border-white bg-white text-slate-400 shadow-sm'
                       }`}
                     >
@@ -1061,8 +1044,8 @@ function NavButton({ active, onClick, icon, label }: any) {
                         type="button"
                         onClick={() => setSelectedServiceLabel(label)}
                         className={`flex flex-col items-center justify-center gap-1 p-3 rounded-2xl border-2 transition-all ${
-                          selectedServiceLabel === label
-                            ? 'border-blue-600 bg-blue-50 text-blue-600 shadow-sm'
+                          selectedServiceLabel === label 
+                            ? 'border-blue-600 bg-blue-50 text-blue-600 shadow-sm' 
                             : 'border-white bg-white text-slate-400 shadow-sm'
                         }`}
                       >
@@ -1080,7 +1063,7 @@ function NavButton({ active, onClick, icon, label }: any) {
               {/* 5. Expense Section for Cashier - Only if enabled */}
               {user.expenses_enabled !== 0 && (
                 <div className="pt-4 border-t border-slate-100">
-                  <button
+                  <button 
                     onClick={() => setShowExpenseForm(!showExpenseForm)}
                     className="w-full flex items-center justify-between p-4 bg-red-50 rounded-2xl text-red-600 transition-all active:scale-95"
                   >
@@ -1092,7 +1075,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                   </button>
 
                   {showExpenseForm && (
-                    <motion.div
+                    <motion.div 
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       className="mt-3 space-y-3"
@@ -1100,27 +1083,27 @@ function NavButton({ active, onClick, icon, label }: any) {
                       <div className="bg-white p-4 rounded-2xl border border-red-100 shadow-sm space-y-3">
                         <div className="space-y-1">
                           <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Description</label>
-                          <input
-                            type="text"
+                          <input 
+                            type="text" 
                             value={newExpenseDescription}
                             onChange={(e) => setNewExpenseDescription(e.target.value)}
                             placeholder="Ex: Achat savon..."
-                            className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-red-600 font-bold text-xs"
+                            className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-red-600 font-bold text-xs" 
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           <div className="space-y-1">
                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Montant (F)</label>
-                            <input
-                              type="number"
+                            <input 
+                              type="number" 
                               value={newExpenseAmount}
                               onChange={(e) => setNewExpenseAmount(e.target.value)}
-                              className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-red-600 font-bold text-xs"
+                              className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-red-600 font-bold text-xs" 
                             />
                           </div>
                           <div className="space-y-1">
                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Catégorie</label>
-                            <select
+                            <select 
                               value={newExpenseCategory}
                               onChange={(e) => setNewExpenseCategory(e.target.value)}
                               className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-red-600 font-bold text-xs"
@@ -1132,14 +1115,14 @@ function NavButton({ active, onClick, icon, label }: any) {
                             </select>
                           </div>
                         </div>
-                        <button
+                        <button 
                           onClick={async () => {
                             if (!newExpenseDescription || !newExpenseAmount) return;
                             const res = await fetch('/api/expenses', {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                              body: JSON.stringify({
-                                description: newExpenseDescription,
+                              body: JSON.stringify({ 
+                                description: newExpenseDescription, 
                                 amount: Number(newExpenseAmount),
                                 category: newExpenseCategory
                               })
@@ -1171,7 +1154,7 @@ function NavButton({ active, onClick, icon, label }: any) {
           )}
 
           {view === 'history' && (
-            <motion.main
+            <motion.main 
               key="history"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -1180,7 +1163,7 @@ function NavButton({ active, onClick, icon, label }: any) {
             >
               <div className="bg-white p-2 rounded-xl border border-slate-100 flex items-center gap-3 px-4 shadow-sm">
                 <Search className="w-4 h-4 text-slate-300" />
-                <input
+                <input 
                   type="text"
                   placeholder="Rechercher matricule, tel, laveur, caissier, marque..."
                   value={searchQuery}
@@ -1203,12 +1186,12 @@ function NavButton({ active, onClick, icon, label }: any) {
                 </div>
                 <TrendingUp className="w-4 h-4 text-blue-600" />
               </div>
-
+              
               <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                 {filteredHistoryData.length > 0 ? (
                   filteredHistoryData.map((item: any) => (
-                    <div
-                      key={item.id}
+                    <div 
+                      key={item.id} 
                       onClick={() => {
                         if (item.type === 'transaction') {
                           setSelectedTransaction(item);
@@ -1264,7 +1247,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                         </div>
                         {user.role === 'super_manager' ? (
                           <div className="flex items-center gap-1">
-                            <button
+                            <button 
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setEditTransactionData({ ...item });
@@ -1277,7 +1260,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
-                            <button
+                            <button 
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (confirm(`Supprimer cette ${item.type === 'expense' ? 'dépense' : 'transaction'} ?`)) {
@@ -1312,7 +1295,7 @@ function NavButton({ active, onClick, icon, label }: any) {
           )}
 
           {view === 'global_history' && (
-            <motion.main
+            <motion.main 
               key="global_history"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -1321,7 +1304,7 @@ function NavButton({ active, onClick, icon, label }: any) {
             >
               <div className="bg-white p-2 rounded-xl border border-slate-100 flex items-center gap-3 px-4 shadow-sm">
                 <Search className="w-4 h-4 text-slate-300" />
-                <input
+                <input 
                   type="text"
                   placeholder="Rechercher matricule, tel, laveur, caissier, marque..."
                   value={searchQuery}
@@ -1371,8 +1354,8 @@ function NavButton({ active, onClick, icon, label }: any) {
                     <div className="grid grid-cols-2 gap-2 bg-white p-2 rounded-xl border border-slate-100 shadow-sm">
                       <div className="space-y-1">
                         <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">Début</label>
-                        <input
-                          type="date"
+                        <input 
+                          type="date" 
                           value={historyStartDate}
                           onChange={(e) => setHistoryStartDate(e.target.value)}
                           onBlur={() => {
@@ -1385,8 +1368,8 @@ function NavButton({ active, onClick, icon, label }: any) {
                       </div>
                       <div className="space-y-1">
                         <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">Fin</label>
-                        <input
-                          type="date"
+                        <input 
+                          type="date" 
                           value={historyEndDate}
                           onChange={(e) => setHistoryEndDate(e.target.value)}
                           onBlur={() => {
@@ -1439,7 +1422,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                 </div>
                 <div className="flex items-center gap-2">
                   {user.role === 'super_manager' && (
-                    <button
+                    <button 
                       onClick={() => {
                         setSelectedHistoryTenant('all');
                         setHistoryPeriod('all');
@@ -1461,8 +1444,8 @@ function NavButton({ active, onClick, icon, label }: any) {
               <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                 {filteredHistoryData.length > 0 ? (
                   filteredHistoryData.map((item: any) => (
-                    <div
-                      key={item.id}
+                    <div 
+                      key={item.id} 
                       onClick={() => {
                         if (item.type === 'transaction') {
                           setSelectedTransaction(item);
@@ -1528,7 +1511,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                         </div>
                         {user.role === 'super_manager' ? (
                           <div className="flex items-center gap-1">
-                            <button
+                            <button 
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setEditTransactionData({ ...item });
@@ -1541,7 +1524,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
-                            <button
+                            <button 
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (confirm(`Supprimer cette ${item.type === 'expense' ? 'dépense' : 'transaction'} ?`)) {
@@ -1576,7 +1559,7 @@ function NavButton({ active, onClick, icon, label }: any) {
           )}
 
           {view === 'super_dashboard' && user.role === 'super_manager' && (
-            <motion.main
+            <motion.main 
               key="super_dashboard"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -1585,7 +1568,7 @@ function NavButton({ active, onClick, icon, label }: any) {
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-black text-slate-900 tracking-tighter">Tableau de Bord Global</h2>
-                  <button
+                  <button 
                     onClick={() => exportToCSV(allTransactions, 'transactions_global')}
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100"
                   >
@@ -1635,8 +1618,8 @@ function NavButton({ active, onClick, icon, label }: any) {
                   <div className="grid grid-cols-2 gap-2 bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
                     <div className="space-y-1">
                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Début</label>
-                      <input
-                        type="date"
+                      <input 
+                        type="date" 
                         value={superStartDate}
                         onChange={(e) => setSuperStartDate(e.target.value)}
                         className="w-full p-2 bg-slate-50 rounded-xl text-xs font-bold outline-none"
@@ -1644,8 +1627,8 @@ function NavButton({ active, onClick, icon, label }: any) {
                     </div>
                     <div className="space-y-1">
                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Fin</label>
-                      <input
-                        type="date"
+                      <input 
+                        type="date" 
                         value={superEndDate}
                         onChange={(e) => setSuperEndDate(e.target.value)}
                         className="w-full p-2 bg-slate-50 rounded-xl text-xs font-bold outline-none"
@@ -1674,56 +1657,56 @@ function NavButton({ active, onClick, icon, label }: any) {
                 </div>
                 <div className="h-[300px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart
+                    <ComposedChart 
                       data={globalStats.dailyHistory}
                       margin={{ top: 10, right: 10, left: 10, bottom: 20 }}
                       barGap={8}
                     >
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis
-                        dataKey="date"
-                        axisLine={false}
-                        tickLine={false}
+                      <XAxis 
+                        dataKey="date" 
+                        axisLine={false} 
+                        tickLine={false} 
                         tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
                         tickFormatter={(str) => {
                           const date = new Date(str);
                           return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
                         }}
                       />
-                      <YAxis
-                        yAxisId="left"
-                        axisLine={false}
-                        tickLine={false}
+                      <YAxis 
+                        yAxisId="left" 
+                        axisLine={false} 
+                        tickLine={false} 
                         tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
                         label={{ value: 'Lavages', angle: -90, position: 'insideLeft', style: { fontSize: 10, fontWeight: 900, fill: '#94a3b8' } }}
                       />
-                      <YAxis
-                        yAxisId="right"
-                        orientation="right"
-                        axisLine={false}
-                        tickLine={false}
+                      <YAxis 
+                        yAxisId="right" 
+                        orientation="right" 
+                        axisLine={false} 
+                        tickLine={false} 
                         tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
                         tickFormatter={(value) => `${value.toLocaleString()}`}
                         label={{ value: 'Recette (F)', angle: 90, position: 'insideRight', style: { fontSize: 10, fontWeight: 900, fill: '#94a3b8' } }}
                       />
                       <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-                      <Legend
+                      <Legend 
                         wrapperStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', paddingTop: '10px' }}
                       />
-                      <Bar
+                      <Bar 
                         yAxisId="left"
-                        dataKey="count"
-                        name="Nombre de Lavages"
-                        fill="#cbd5e1"
+                        dataKey="count" 
+                        name="Nombre de Lavages" 
+                        fill="#cbd5e1" 
                         radius={[4, 4, 0, 0]}
                         barSize={20}
                         animationDuration={1500}
                       />
-                      <Bar
+                      <Bar 
                         yAxisId="right"
-                        dataKey="revenue"
-                        name="Chiffre d'Affaires"
-                        fill="#1d4ed8"
+                        dataKey="revenue" 
+                        name="Chiffre d'Affaires" 
+                        fill="#1d4ed8" 
                         radius={[4, 4, 0, 0]}
                         barSize={20}
                         animationDuration={1500}
@@ -1736,7 +1719,7 @@ function NavButton({ active, onClick, icon, label }: any) {
           )}
 
           {view === 'super_create' && user.role === 'super_manager' && (
-            <motion.main
+            <motion.main 
               key="super_create"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1754,7 +1737,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Gestion Entreprise</p>
                       </div>
                     </div>
-                    <button
+                    <button 
                       onClick={() => setSelectedTenantId(null)}
                       className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all"
                     >
@@ -1770,14 +1753,14 @@ function NavButton({ active, onClick, icon, label }: any) {
                       </h3>
                       <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 space-y-4">
                         <div className="flex gap-2">
-                          <input
-                            type="text"
-                            placeholder="Nouveau type (ex: Camion)"
+                          <input 
+                            type="text" 
+                            placeholder="Nouveau type (ex: Camion)" 
                             value={newVehicleTypeLabel}
                             onChange={(e) => setNewVehicleTypeLabel(e.target.value)}
                             className="flex-1 px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold text-sm"
                           />
-                          <button
+                          <button 
                             onClick={async () => {
                               if (!newVehicleTypeLabel) return;
                               const res = await fetch('/api/vehicle-types', {
@@ -1801,7 +1784,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                             <div key={vt.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                               <span className="text-xs font-bold text-slate-700">{vt.label}</span>
                               <div className="flex items-center gap-2">
-                                <button
+                                <button 
                                   onClick={() => {
                                     setEditingVehicleType(vt);
                                     setEditValue(vt.label);
@@ -1810,7 +1793,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                                 >
                                   <Edit2 className="w-3 h-3" />
                                 </button>
-                                <button
+                                <button 
                                   onClick={async () => {
                                     if (confirm('Supprimer ce type de véhicule ?')) {
                                       await fetch(`/api/vehicle-types/${vt.id}`, {
@@ -1838,14 +1821,14 @@ function NavButton({ active, onClick, icon, label }: any) {
                       </h3>
                       <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 space-y-4">
                         <div className="flex gap-2">
-                          <input
-                            type="text"
-                            placeholder="Nouvelle marque (ex: Tesla)"
+                          <input 
+                            type="text" 
+                            placeholder="Nouvelle marque (ex: Tesla)" 
                             value={newBrandName}
                             onChange={(e) => setNewBrandName(e.target.value)}
                             className="flex-1 px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold text-sm"
                           />
-                          <button
+                          <button 
                             onClick={async () => {
                               if (!newBrandName) return;
                               const res = await fetch('/api/brands', {
@@ -1868,7 +1851,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                             <div key={b.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                               <span className="text-xs font-bold text-slate-700">{b.name}</span>
                               <div className="flex items-center gap-2">
-                                <button
+                                <button 
                                   onClick={() => {
                                     setEditingBrand(b);
                                     setEditValue(b.name);
@@ -1877,7 +1860,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                                 >
                                   <Edit2 className="w-3 h-3" />
                                 </button>
-                                <button
+                                <button 
                                   onClick={async () => {
                                     if (confirm('Supprimer cette marque ?')) {
                                       await fetch(`/api/brands/${b.id}`, {
@@ -1906,14 +1889,14 @@ function NavButton({ active, onClick, icon, label }: any) {
                     </h3>
                     <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 space-y-6">
                       <div className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="Nouvelle prestation (ex: Vitrage)"
+                        <input 
+                          type="text" 
+                          placeholder="Nouvelle prestation (ex: Vitrage)" 
                           value={newServiceLabel}
                           onChange={(e) => setNewServiceLabel(e.target.value)}
                           className="flex-1 px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold text-sm"
                         />
-                        <button
+                        <button 
                           onClick={async () => {
                             if (!newServiceLabel) return;
                             const res = await fetch('/api/services/labels', {
@@ -1938,7 +1921,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                               <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight">{label}</h4>
                               <div className="flex items-center gap-4">
-                                <button
+                                <button 
                                   onClick={() => {
                                     const service = services.find(s => s.label === label);
                                     if (service) {
@@ -1951,7 +1934,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                                 >
                                   Modifier
                                 </button>
-                                <button
+                                <button 
                                   onClick={async () => {
                                     if (confirm(`Supprimer la prestation ${label} ?`)) {
                                       await fetch('/api/services/labels', {
@@ -1976,18 +1959,18 @@ function NavButton({ active, onClick, icon, label }: any) {
                                     {s.active === 0 && <span className="text-[8px] px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded-md font-black uppercase tracking-tighter">Inactif</span>}
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    <button
+                                    <button 
                                       onClick={() => toggleServiceActive(s.id, selectedTenantId!)}
                                       className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${
-                                        s.active === 0
-                                          ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white'
+                                        s.active === 0 
+                                          ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white' 
                                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                       }`}
                                     >
                                       {s.active === 0 ? 'Activer' : 'Désactiver'}
                                     </button>
-                                    <input
-                                      type="number"
+                                    <input 
+                                      type="number" 
                                       defaultValue={s.price}
                                       onBlur={async (e) => {
                                         const price = parseInt(e.target.value);
@@ -2018,16 +2001,16 @@ function NavButton({ active, onClick, icon, label }: any) {
                       <Users className="w-3 h-3" /> Utilisateurs & Laveurs
                     </h3>
                     <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 space-y-6">
-                      <form
+                      <form 
                         onSubmit={async (e) => {
                           e.preventDefault();
                           const res = await fetch('/api/users', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                            body: JSON.stringify({
-                              tenant_id: selectedTenantId,
-                              username: newEmployeeUsername,
-                              password: newEmployeePassword,
+                            body: JSON.stringify({ 
+                              tenant_id: selectedTenantId, 
+                              username: newEmployeeUsername, 
+                              password: newEmployeePassword, 
                               role: newEmployeeRole,
                               first_name: newEmployeeFirstName,
                               last_name: newEmployeeLastName,
@@ -2052,17 +2035,17 @@ function NavButton({ active, onClick, icon, label }: any) {
                         className="space-y-4"
                       >
                         <div className="grid grid-cols-2 gap-3">
-                          <input
-                            type="text"
-                            placeholder="Nom"
+                          <input 
+                            type="text" 
+                            placeholder="Nom" 
                             value={newEmployeeLastName}
                             onChange={(e) => setNewEmployeeLastName(e.target.value)}
                             className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-black outline-none focus:border-blue-600 focus:bg-white transition-all"
                             required
                           />
-                          <input
-                            type="text"
-                            placeholder="Prénom"
+                          <input 
+                            type="text" 
+                            placeholder="Prénom" 
                             value={newEmployeeFirstName}
                             onChange={(e) => setNewEmployeeFirstName(e.target.value)}
                             className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-black outline-none focus:border-blue-600 focus:bg-white transition-all"
@@ -2070,17 +2053,17 @@ function NavButton({ active, onClick, icon, label }: any) {
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                          <input
-                            type="text"
-                            placeholder="Téléphone"
+                          <input 
+                            type="text" 
+                            placeholder="Téléphone" 
                             value={newEmployeePhone}
                             onChange={(e) => setNewEmployeePhone(e.target.value)}
                             className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-black outline-none focus:border-blue-600 focus:bg-white transition-all"
                             required
                           />
-                          <input
-                            type="text"
-                            placeholder="Nom d'utilisateur"
+                          <input 
+                            type="text" 
+                            placeholder="Nom d'utilisateur" 
                             value={newEmployeeUsername}
                             onChange={(e) => setNewEmployeeUsername(e.target.value)}
                             className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-black outline-none focus:border-blue-600 focus:bg-white transition-all"
@@ -2088,7 +2071,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                          <select
+                          <select 
                             value={newEmployeeRole}
                             onChange={(e: any) => setNewEmployeeRole(e.target.value)}
                             className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-black outline-none focus:border-blue-600 focus:bg-white transition-all"
@@ -2097,9 +2080,9 @@ function NavButton({ active, onClick, icon, label }: any) {
                             {user?.role === 'super_manager' && <option value="manager">Manager</option>}
                             <option value="washer">Laveur</option>
                           </select>
-                          <input
-                            type="password"
-                            placeholder="Mot de passe"
+                          <input 
+                            type="password" 
+                            placeholder="Mot de passe" 
                             value={newEmployeePassword}
                             onChange={(e) => setNewEmployeePassword(e.target.value)}
                             className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-black outline-none focus:border-blue-600 focus:bg-white transition-all"
@@ -2125,7 +2108,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                             </div>
                             <div className="flex items-center gap-2">
                               {u.role !== 'washer' && (
-                                <button
+                                <button 
                                   onClick={async () => {
                                     const res = await fetch(`/api/admin/login-as/${u.id}`, {
                                       method: 'POST',
@@ -2146,7 +2129,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                                   <LogIn className="w-4 h-4" />
                                 </button>
                               )}
-                              <button
+                              <button 
                                 onClick={() => {
                                   setEditingUser(u);
                                   setEditFirstName(u.first_name || '');
@@ -2159,17 +2142,17 @@ function NavButton({ active, onClick, icon, label }: any) {
                               >
                                 <Edit2 className="w-4 h-4" />
                               </button>
-                              <button
+                              <button 
                                 onClick={() => toggleUserActive(u.id, selectedTenantId!)}
                                 className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${
-                                  u.active === 0
-                                    ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white'
+                                  u.active === 0 
+                                    ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white' 
                                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                 }`}
                               >
                                 {u.active === 0 ? 'Activer' : 'Désactiver'}
                               </button>
-                              <button
+                              <button 
                                 onClick={async () => {
                                   if (confirm('Supprimer cet utilisateur ?')) {
                                     await fetch(`/api/users/${u.id}`, {
@@ -2200,48 +2183,48 @@ function NavButton({ active, onClick, icon, label }: any) {
                         <ResponsiveContainer width="100%" height="100%">
                           <ComposedChart data={managerPeriod === 'today' ? revenueTrend : stats.dailyHistory} barGap={6}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis
-                              dataKey="date"
-                              axisLine={false}
-                              tickLine={false}
+                            <XAxis 
+                              dataKey="date" 
+                              axisLine={false} 
+                              tickLine={false} 
                               tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }}
                               tickFormatter={(str) => {
                                 const date = new Date(str);
                                 return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
                               }}
                             />
-                            <YAxis
+                            <YAxis 
                               yAxisId="left"
-                              axisLine={false}
-                              tickLine={false}
+                              axisLine={false} 
+                              tickLine={false} 
                               tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }}
                             />
-                            <YAxis
+                            <YAxis 
                               yAxisId="right"
                               orientation="right"
-                              axisLine={false}
-                              tickLine={false}
+                              axisLine={false} 
+                              tickLine={false} 
                               tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }}
                               tickFormatter={(value) => `${value.toLocaleString()}`}
                             />
                             <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-                            <Legend
+                            <Legend 
                               wrapperStyle={{ fontSize: '9px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', paddingTop: '10px' }}
                             />
-                            <Bar
+                            <Bar 
                               yAxisId="left"
-                              dataKey="count"
-                              name="Lavages"
-                              fill="#cbd5e1"
+                              dataKey="count" 
+                              name="Lavages" 
+                              fill="#cbd5e1" 
                               radius={[4, 4, 0, 0]}
                               barSize={12}
                               animationDuration={1500}
                             />
-                            <Bar
+                            <Bar 
                               yAxisId="right"
-                              dataKey="revenue"
-                              name="Recette"
-                              fill="#1d4ed8"
+                              dataKey="revenue" 
+                              name="Recette" 
+                              fill="#1d4ed8" 
                               radius={[4, 4, 0, 0]}
                               barSize={12}
                               animationDuration={1500}
@@ -2261,8 +2244,8 @@ function NavButton({ active, onClick, icon, label }: any) {
                     <form onSubmit={handleCreateTenant} className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 space-y-4">
                       <div className="space-y-1">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nom de l'entreprise</label>
-                        <input
-                          type="text"
+                        <input 
+                          type="text" 
                           value={newTenantName}
                           onChange={(e) => setNewTenantName(e.target.value)}
                           className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold"
@@ -2272,8 +2255,8 @@ function NavButton({ active, onClick, icon, label }: any) {
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Manager</label>
-                          <input
-                            type="text"
+                          <input 
+                            type="text" 
                             value={newTenantManager}
                             onChange={(e) => setNewTenantManager(e.target.value)}
                             className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold"
@@ -2282,8 +2265,8 @@ function NavButton({ active, onClick, icon, label }: any) {
                         </div>
                         <div className="space-y-1">
                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Mot de passe</label>
-                          <input
-                            type="password"
+                          <input 
+                            type="password" 
                             value={newTenantPass}
                             onChange={(e) => setNewTenantPass(e.target.value)}
                             className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold"
@@ -2304,9 +2287,9 @@ function NavButton({ active, onClick, icon, label }: any) {
                     <div className="space-y-3">
                       <div className="relative">
                         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                        <input
-                          type="text"
-                          placeholder="Rechercher une entreprise..."
+                        <input 
+                          type="text" 
+                          placeholder="Rechercher une entreprise..." 
                           value={tenantSearchQuery}
                           onChange={(e) => setTenantSearchQuery(e.target.value)}
                           className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold text-[10px] uppercase tracking-widest shadow-sm transition-all"
@@ -2328,39 +2311,39 @@ function NavButton({ active, onClick, icon, label }: any) {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <button
+                            <button 
                               onClick={() => toggleTenantBrands(t.id, t.brands_enabled)}
                               className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                                t.brands_enabled === 1
-                                  ? 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white'
+                                t.brands_enabled === 1 
+                                  ? 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white' 
                                   : 'bg-slate-50 text-slate-600 hover:bg-slate-200'
                               }`}
                               title={t.brands_enabled === 1 ? "Désactiver les marques" : "Activer les marques"}
                             >
                               {t.brands_enabled === 1 ? 'Marques ON' : 'Marques OFF'}
                             </button>
-                            <button
+                            <button 
                               onClick={() => toggleTenantExpenses(t.id, t.expenses_enabled)}
                               className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                                t.expenses_enabled !== 0
-                                  ? 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white'
+                                t.expenses_enabled !== 0 
+                                  ? 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white' 
                                   : 'bg-slate-50 text-slate-600 hover:bg-slate-200'
                               }`}
                               title={t.expenses_enabled !== 0 ? "Désactiver les dépenses" : "Activer les dépenses"}
                             >
                               {t.expenses_enabled !== 0 ? 'Dépenses ON' : 'Dépenses OFF'}
                             </button>
-                            <button
+                            <button 
                               onClick={() => toggleTenantActive(t.id)}
                               className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                                t.active === 0
-                                  ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white'
+                                t.active === 0 
+                                  ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white' 
                                   : 'bg-slate-50 text-slate-600 hover:bg-slate-200'
                               }`}
                             >
                               {t.active === 0 ? 'Activer' : 'Désactiver'}
                             </button>
-                            <button
+                            <button 
                               onClick={() => {
                                 setEditingTenant(t);
                                 setEditValue(t.name);
@@ -2369,7 +2352,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
-                            <button
+                            <button 
                               onClick={() => {
                                 setSelectedTenantId(t.id);
                                 fetchVehicleTypes(t.id);
@@ -2381,7 +2364,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                             >
                               Gérer
                             </button>
-                            <button
+                            <button 
                               onClick={async (e) => {
                                 e.stopPropagation();
                                 if (window.confirm('⚠️ ATTENTION : Supprimer cette entreprise effacera DÉFINITIVEMENT toutes ses transactions, ses tarifs et ses utilisateurs. Continuer ?')) {
@@ -2411,7 +2394,7 @@ function NavButton({ active, onClick, icon, label }: any) {
         )}
 
           {(view === 'admin' && user.role === 'super_manager') && (
-            <motion.main
+            <motion.main 
               key="admin"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -2430,7 +2413,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                       </div>
                     </div>
                     {user.role === 'super_manager' && (
-                      <button
+                      <button 
                         onClick={() => setSelectedTenantId(null)}
                         className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all"
                       >
@@ -2447,14 +2430,14 @@ function NavButton({ active, onClick, icon, label }: any) {
                       </h3>
                       <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 space-y-4">
                         <div className="flex gap-2">
-                          <input
-                            type="text"
-                            placeholder="Nouveau type (ex: Camion)"
+                          <input 
+                            type="text" 
+                            placeholder="Nouveau type (ex: Camion)" 
                             value={newVehicleTypeLabel}
                             onChange={(e) => setNewVehicleTypeLabel(e.target.value)}
                             className="flex-1 px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold text-sm"
                           />
-                          <button
+                          <button 
                             onClick={async () => {
                               if (!newVehicleTypeLabel) return;
                               const res = await fetch('/api/vehicle-types', {
@@ -2478,7 +2461,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                             <div key={vt.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                               <span className="text-xs font-bold text-slate-700">{vt.label}</span>
                               <div className="flex items-center gap-2">
-                                <button
+                                <button 
                                   onClick={() => {
                                     setEditingVehicleType(vt);
                                     setEditValue(vt.label);
@@ -2487,7 +2470,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                                 >
                                   <Edit2 className="w-3 h-3" />
                                 </button>
-                                <button
+                                <button 
                                   onClick={async () => {
                                     if (confirm('Supprimer ce type de véhicule ?')) {
                                       await fetch(`/api/vehicle-types/${vt.id}`, {
@@ -2516,14 +2499,14 @@ function NavButton({ active, onClick, icon, label }: any) {
                         </h3>
                         <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 space-y-4">
                           <div className="flex gap-2">
-                            <input
-                              type="text"
-                              placeholder="Nouvelle marque (ex: Tesla)"
+                            <input 
+                              type="text" 
+                              placeholder="Nouvelle marque (ex: Tesla)" 
                               value={newBrandName}
                               onChange={(e) => setNewBrandName(e.target.value)}
                               className="flex-1 px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold text-sm"
                             />
-                            <button
+                            <button 
                               onClick={async () => {
                                 if (!newBrandName) return;
                                 const res = await fetch('/api/brands', {
@@ -2546,7 +2529,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                               <div key={b.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                                 <span className="text-xs font-bold text-slate-700">{b.name}</span>
                                 <div className="flex items-center gap-2">
-                                  <button
+                                  <button 
                                     onClick={() => {
                                       setEditingBrand(b);
                                       setEditValue(b.name);
@@ -2555,7 +2538,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                                   >
                                     <Edit2 className="w-3 h-3" />
                                   </button>
-                                  <button
+                                  <button 
                                     onClick={async () => {
                                       if (confirm('Supprimer cette marque ?')) {
                                         await fetch(`/api/brands/${b.id}`, {
@@ -2585,14 +2568,14 @@ function NavButton({ active, onClick, icon, label }: any) {
                     </h3>
                     <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 space-y-6">
                       <div className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="Nouvelle prestation (ex: Vitrage)"
+                        <input 
+                          type="text" 
+                          placeholder="Nouvelle prestation (ex: Vitrage)" 
                           value={newServiceLabel}
                           onChange={(e) => setNewServiceLabel(e.target.value)}
                           className="flex-1 px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold text-sm"
                         />
-                        <button
+                        <button 
                           onClick={async () => {
                             if (!newServiceLabel) return;
                             const res = await fetch('/api/services/labels', {
@@ -2617,7 +2600,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                               <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight">{label}</h4>
                               <div className="flex items-center gap-4">
-                                <button
+                                <button 
                                   onClick={() => {
                                     const service = services.find(s => s.label === label);
                                     if (service) {
@@ -2630,7 +2613,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                                 >
                                   Modifier
                                 </button>
-                                <button
+                                <button 
                                   onClick={async () => {
                                     if (confirm(`Supprimer la prestation ${label} ?`)) {
                                       await fetch('/api/services/labels', {
@@ -2655,18 +2638,18 @@ function NavButton({ active, onClick, icon, label }: any) {
                                     {s.active === 0 && <span className="text-[8px] px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded-md font-black uppercase tracking-tighter">Inactif</span>}
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    <button
+                                    <button 
                                       onClick={() => toggleServiceActive(s.id, selectedTenantId!)}
                                       className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${
-                                        s.active === 0
-                                          ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white'
+                                        s.active === 0 
+                                          ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white' 
                                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                       }`}
                                     >
                                       {s.active === 0 ? 'Activer' : 'Désactiver'}
                                     </button>
-                                    <input
-                                      type="number"
+                                    <input 
+                                      type="number" 
                                       defaultValue={s.price}
                                       onBlur={async (e) => {
                                         const price = parseInt(e.target.value);
@@ -2697,16 +2680,16 @@ function NavButton({ active, onClick, icon, label }: any) {
                       <Users className="w-3 h-3" /> Utilisateurs & Laveurs
                     </h3>
                     <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 space-y-6">
-                      <form
+                      <form 
                         onSubmit={async (e) => {
                           e.preventDefault();
                           const res = await fetch('/api/users', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                            body: JSON.stringify({
-                              tenant_id: selectedTenantId,
-                              username: newEmployeeUsername,
-                              password: newEmployeePassword,
+                            body: JSON.stringify({ 
+                              tenant_id: selectedTenantId, 
+                              username: newEmployeeUsername, 
+                              password: newEmployeePassword, 
                               role: newEmployeeRole,
                               first_name: newEmployeeFirstName,
                               last_name: newEmployeeLastName,
@@ -2725,17 +2708,17 @@ function NavButton({ active, onClick, icon, label }: any) {
                         className="space-y-4"
                       >
                         <div className="grid grid-cols-2 gap-3">
-                          <input
-                            type="text"
-                            placeholder="Nom"
+                          <input 
+                            type="text" 
+                            placeholder="Nom" 
                             value={newEmployeeLastName}
                             onChange={(e) => setNewEmployeeLastName(e.target.value)}
                             className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-black outline-none focus:border-blue-600 focus:bg-white transition-all"
                             required
                           />
-                          <input
-                            type="text"
-                            placeholder="Prénom"
+                          <input 
+                            type="text" 
+                            placeholder="Prénom" 
                             value={newEmployeeFirstName}
                             onChange={(e) => setNewEmployeeFirstName(e.target.value)}
                             className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-black outline-none focus:border-blue-600 focus:bg-white transition-all"
@@ -2743,17 +2726,17 @@ function NavButton({ active, onClick, icon, label }: any) {
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                          <input
-                            type="text"
-                            placeholder="Téléphone"
+                          <input 
+                            type="text" 
+                            placeholder="Téléphone" 
                             value={newEmployeePhone}
                             onChange={(e) => setNewEmployeePhone(e.target.value)}
                             className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-black outline-none focus:border-blue-600 focus:bg-white transition-all"
                             required
                           />
-                          <input
-                            type="text"
-                            placeholder="Nom d'utilisateur"
+                          <input 
+                            type="text" 
+                            placeholder="Nom d'utilisateur" 
                             value={newEmployeeUsername}
                             onChange={(e) => setNewEmployeeUsername(e.target.value)}
                             className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-black outline-none focus:border-blue-600 focus:bg-white transition-all"
@@ -2761,7 +2744,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                          <select
+                          <select 
                             value={newEmployeeRole}
                             onChange={(e: any) => setNewEmployeeRole(e.target.value)}
                             className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-black outline-none focus:border-blue-600 focus:bg-white transition-all"
@@ -2770,9 +2753,9 @@ function NavButton({ active, onClick, icon, label }: any) {
                             {user?.role === 'super_manager' && <option value="manager">Manager</option>}
                             <option value="washer">Laveur</option>
                           </select>
-                          <input
-                            type="password"
-                            placeholder="Mot de passe"
+                          <input 
+                            type="password" 
+                            placeholder="Mot de passe" 
                             value={newEmployeePassword}
                             onChange={(e) => setNewEmployeePassword(e.target.value)}
                             className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-black outline-none focus:border-blue-600 focus:bg-white transition-all"
@@ -2797,7 +2780,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <button
+                              <button 
                                 onClick={() => {
                                   setEditingUser(u);
                                   setEditFirstName(u.first_name || '');
@@ -2810,18 +2793,18 @@ function NavButton({ active, onClick, icon, label }: any) {
                               >
                                 <Edit2 className="w-4 h-4" />
                               </button>
-                              <button
+                              <button 
                                 onClick={() => toggleUserActive(u.id, selectedTenantId!)}
                                 className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${
-                                  u.active === 0
-                                    ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white'
+                                  u.active === 0 
+                                    ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white' 
                                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                 }`}
                               >
                                 {u.active === 0 ? 'Activer' : 'Désactiver'}
                               </button>
                               {(u.role !== 'manager' || user.role === 'super_manager') && (
-                                <button
+                                <button 
                                   onClick={async () => {
                                     if (confirm('Supprimer cet utilisateur ?')) {
                                       await fetch(`/api/users/${u.id}`, {
@@ -2853,48 +2836,48 @@ function NavButton({ active, onClick, icon, label }: any) {
                         <ResponsiveContainer width="100%" height="100%">
                           <ComposedChart data={managerPeriod === 'today' ? revenueTrend : stats.dailyHistory} barGap={6}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis
-                              dataKey="date"
-                              axisLine={false}
-                              tickLine={false}
+                            <XAxis 
+                              dataKey="date" 
+                              axisLine={false} 
+                              tickLine={false} 
                               tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }}
                               tickFormatter={(str) => {
                                 const date = new Date(str);
                                 return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
                               }}
                             />
-                            <YAxis
+                            <YAxis 
                               yAxisId="left"
-                              axisLine={false}
-                              tickLine={false}
+                              axisLine={false} 
+                              tickLine={false} 
                               tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }}
                             />
-                            <YAxis
+                            <YAxis 
                               yAxisId="right"
                               orientation="right"
-                              axisLine={false}
-                              tickLine={false}
+                              axisLine={false} 
+                              tickLine={false} 
                               tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }}
                               tickFormatter={(value) => `${value.toLocaleString()}`}
                             />
                             <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-                            <Legend
+                            <Legend 
                               wrapperStyle={{ fontSize: '9px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', paddingTop: '10px' }}
                             />
-                            <Bar
+                            <Bar 
                               yAxisId="left"
-                              dataKey="count"
-                              name="Lavages"
-                              fill="#cbd5e1"
+                              dataKey="count" 
+                              name="Lavages" 
+                              fill="#cbd5e1" 
                               radius={[4, 4, 0, 0]}
                               barSize={12}
                               animationDuration={1500}
                             />
-                            <Bar
+                            <Bar 
                               yAxisId="right"
-                              dataKey="revenue"
-                              name="Recette"
-                              fill="#1d4ed8"
+                              dataKey="revenue" 
+                              name="Recette" 
+                              fill="#1d4ed8" 
                               radius={[4, 4, 0, 0]}
                               barSize={12}
                               animationDuration={1500}
@@ -2926,39 +2909,39 @@ function NavButton({ active, onClick, icon, label }: any) {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <button
+                          <button 
                             onClick={() => toggleTenantBrands(t.id, t.brands_enabled)}
                             className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                              t.brands_enabled === 1
-                                ? 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white'
+                              t.brands_enabled === 1 
+                                ? 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white' 
                                 : 'bg-slate-50 text-slate-600 hover:bg-slate-200'
                             }`}
                             title={t.brands_enabled === 1 ? "Désactiver les marques" : "Activer les marques"}
                           >
                             {t.brands_enabled === 1 ? 'Marques ON' : 'Marques OFF'}
                           </button>
-                          <button
+                          <button 
                             onClick={() => toggleTenantExpenses(t.id, t.expenses_enabled)}
                             className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                              t.expenses_enabled !== 0
-                                ? 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white'
+                              t.expenses_enabled !== 0 
+                                ? 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white' 
                                 : 'bg-slate-50 text-slate-600 hover:bg-slate-200'
                             }`}
                             title={t.expenses_enabled !== 0 ? "Désactiver les dépenses" : "Activer les dépenses"}
                           >
                             {t.expenses_enabled !== 0 ? 'Dépenses ON' : 'Dépenses OFF'}
                           </button>
-                          <button
+                          <button 
                             onClick={() => toggleTenantActive(t.id)}
                             className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                              t.active === 0
-                                ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white'
+                              t.active === 0 
+                                ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white' 
                                 : 'bg-slate-50 text-slate-600 hover:bg-slate-200'
                             }`}
                           >
                             {t.active === 0 ? 'Activer' : 'Désactiver'}
                           </button>
-                          <button
+                          <button 
                             onClick={() => {
                               setEditingTenant(t);
                               setEditValue(t.name);
@@ -2967,7 +2950,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
-                          <button
+                          <button 
                             onClick={() => {
                               setSelectedTenantId(t.id);
                               fetchVehicleTypes(t.id);
@@ -2979,7 +2962,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                           >
                             Gérer
                           </button>
-                          <button
+                          <button 
                             onClick={async (e) => {
                               e.stopPropagation();
                               if (window.confirm('⚠️ ATTENTION : Supprimer cette entreprise effacera DÉFINITIVEMENT toutes ses transactions, ses tarifs et ses utilisateurs. Continuer ?')) {
@@ -3007,7 +2990,7 @@ function NavButton({ active, onClick, icon, label }: any) {
           )}
 
           {view === 'stats' && user.role === 'manager' && (
-            <motion.main
+            <motion.main 
               key="stats"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -3040,7 +3023,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                   </div>
                   <div className="flex-1">
                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Filtrer par Caissier</label>
-                    <select
+                    <select 
                       value={selectedCashierId}
                       onChange={(e) => setSelectedCashierId(e.target.value)}
                       className="w-full bg-transparent text-xs font-black uppercase tracking-tighter outline-none"
@@ -3057,20 +3040,20 @@ function NavButton({ active, onClick, icon, label }: any) {
                   <div className="grid grid-cols-2 gap-3 pt-2">
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Début</label>
-                      <input
-                        type="date"
+                      <input 
+                        type="date" 
                         value={managerStartDate}
                         onChange={(e) => setManagerStartDate(e.target.value)}
-                        className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold text-xs"
+                        className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold text-xs" 
                       />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Fin</label>
-                      <input
-                        type="date"
+                      <input 
+                        type="date" 
                         value={managerEndDate}
                         onChange={(e) => setManagerEndDate(e.target.value)}
-                        className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold text-xs"
+                        className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold text-xs" 
                       />
                     </div>
                   </div>
@@ -3118,56 +3101,56 @@ function NavButton({ active, onClick, icon, label }: any) {
                 </h3>
                 <div className="h-48 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart
+                    <ComposedChart 
                       data={managerPeriod === 'today' ? revenueTrend : stats.dailyHistory}
                       margin={{ top: 10, right: 10, left: 10, bottom: 20 }}
                       barGap={8}
                     >
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis
-                        dataKey="date"
-                        axisLine={false}
-                        tickLine={false}
+                      <XAxis 
+                        dataKey="date" 
+                        axisLine={false} 
+                        tickLine={false} 
                         tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
                         tickFormatter={(str) => {
                           const date = new Date(str);
                           return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
                         }}
                       />
-                      <YAxis
+                      <YAxis 
                         yAxisId="left"
-                        axisLine={false}
-                        tickLine={false}
+                        axisLine={false} 
+                        tickLine={false} 
                         tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
                         label={{ value: 'Lavages', angle: -90, position: 'insideLeft', style: { fontSize: 10, fontWeight: 900, fill: '#94a3b8' } }}
                       />
-                      <YAxis
+                      <YAxis 
                         yAxisId="right"
                         orientation="right"
-                        axisLine={false}
-                        tickLine={false}
+                        axisLine={false} 
+                        tickLine={false} 
                         tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
                         tickFormatter={(value) => `${value.toLocaleString()}`}
                         label={{ value: 'Recette (F)', angle: 90, position: 'insideRight', style: { fontSize: 10, fontWeight: 900, fill: '#94a3b8' } }}
                       />
                       <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-                      <Legend
+                      <Legend 
                         wrapperStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', paddingTop: '10px' }}
                       />
-                      <Bar
+                      <Bar 
                         yAxisId="left"
-                        dataKey="count"
-                        name="Nombre de Lavages"
-                        fill="#cbd5e1"
+                        dataKey="count" 
+                        name="Nombre de Lavages" 
+                        fill="#cbd5e1" 
                         radius={[4, 4, 0, 0]}
                         barSize={15}
                         animationDuration={1500}
                       />
-                      <Bar
+                      <Bar 
                         yAxisId="right"
-                        dataKey="revenue"
-                        name="Chiffre d'Affaires"
-                        fill="#1d4ed8"
+                        dataKey="revenue" 
+                        name="Chiffre d'Affaires" 
+                        fill="#1d4ed8" 
                         radius={[4, 4, 0, 0]}
                         barSize={15}
                         animationDuration={1500}
@@ -3213,7 +3196,7 @@ function NavButton({ active, onClick, icon, label }: any) {
           )}
 
           {view === 'personnel' && user.role === 'manager' && (
-            <motion.main
+            <motion.main 
               key="personnel"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -3224,15 +3207,15 @@ function NavButton({ active, onClick, icon, label }: any) {
                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                   <Plus className="w-4 h-4" /> Ajouter du personnel
                 </h3>
-                <form
+                <form 
                   onSubmit={async (e) => {
                     e.preventDefault();
                     const res = await fetch('/api/users', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                      body: JSON.stringify({
-                        username: newEmployeeUsername,
-                        password: newEmployeePassword,
+                      body: JSON.stringify({ 
+                        username: newEmployeeUsername, 
+                        password: newEmployeePassword, 
                         role: newEmployeeRole,
                         first_name: newEmployeeFirstName,
                         last_name: newEmployeeLastName,
@@ -3259,51 +3242,51 @@ function NavButton({ active, onClick, icon, label }: any) {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nom</label>
-                      <input
-                        type="text"
+                      <input 
+                        type="text" 
                         value={newEmployeeLastName}
                         onChange={(e) => setNewEmployeeLastName(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold"
-                        required
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold" 
+                        required 
                       />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Prénom</label>
-                      <input
-                        type="text"
+                      <input 
+                        type="text" 
                         value={newEmployeeFirstName}
                         onChange={(e) => setNewEmployeeFirstName(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold"
-                        required
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold" 
+                        required 
                       />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Téléphone</label>
-                      <input
-                        type="text"
+                      <input 
+                        type="text" 
                         value={newEmployeePhone}
                         onChange={(e) => setNewEmployeePhone(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold"
-                        required
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold" 
+                        required 
                       />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nom d'utilisateur</label>
-                      <input
-                        type="text"
+                      <input 
+                        type="text" 
                         value={newEmployeeUsername}
                         onChange={(e) => setNewEmployeeUsername(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold"
-                        required
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold" 
+                        required 
                       />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Rôle</label>
-                      <select
+                      <select 
                         value={newEmployeeRole}
                         onChange={(e: any) => setNewEmployeeRole(e.target.value)}
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold appearance-none"
@@ -3315,12 +3298,12 @@ function NavButton({ active, onClick, icon, label }: any) {
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Mot de passe</label>
-                      <input
-                        type="password"
+                      <input 
+                        type="password" 
                         value={newEmployeePassword}
                         onChange={(e) => setNewEmployeePassword(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold"
-                        placeholder="Facultatif pour laveur"
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold" 
+                        placeholder="Facultatif pour laveur" 
                       />
                     </div>
                   </div>
@@ -3354,7 +3337,7 @@ function NavButton({ active, onClick, icon, label }: any) {
                       </div>
                       <div className="flex items-center gap-3">
                         {user.role === 'super_manager' && u.role !== 'washer' && (
-                          <button
+                          <button 
                             onClick={async () => {
                               const res = await fetch(`/api/admin/login-as/${u.id}`, {
                                 method: 'POST',
