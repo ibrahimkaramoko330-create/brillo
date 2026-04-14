@@ -929,9 +929,14 @@ async function startServer() {
   });
 
   app.delete("/api/expenses/:id", authenticate, (req: any, res) => {
-    if (req.user.role !== "manager") return res.status(403).json({ error: "Forbidden" });
-    db.prepare("DELETE FROM expenses WHERE id = ? AND tenant_id = ?")
-      .run(req.params.id, req.user.tenant_id);
+    if (req.user.role !== "super_manager" && req.user.role !== "manager") return res.status(403).json({ error: "Forbidden" });
+
+    if (req.user.role === "super_manager") {
+      db.prepare("DELETE FROM expenses WHERE id = ?").run(req.params.id);
+    } else {
+      db.prepare("DELETE FROM expenses WHERE id = ? AND tenant_id = ?")
+        .run(req.params.id, req.user.tenant_id);
+    }
     res.json({ success: true });
   });
 

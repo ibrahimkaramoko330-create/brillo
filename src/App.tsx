@@ -231,6 +231,29 @@ export default function App() {
   const [selectedCashierId, setSelectedCashierId] = useState<string>('all');
   const [showExpenseForm, setShowExpenseForm] = useState(false);
 
+  // --- Confirmation Modal State ---
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmModalConfig, setConfirmModalConfig] = useState<{
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    confirmText?: string;
+    cancelText?: string;
+    type?: 'danger' | 'info';
+  } | null>(null);
+
+  const confirmAction = (config: {
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    confirmText?: string;
+    cancelText?: string;
+    type?: 'danger' | 'info';
+  }) => {
+    setConfirmModalConfig(config);
+    setShowConfirmModal(true);
+  };
+
   // --- Edit State ---
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   const [editingBrand, setEditingBrand] = useState<VehicleBrand | null>(null);
@@ -390,23 +413,23 @@ export default function App() {
       params.append('endDate', end);
     }
     if (tenantId && tenantId !== 'all') params.append('tenant_id', tenantId);
-    
+
     query = params.toString() ? `?${params.toString()}` : '';
 
     const [tRes, eRes] = await Promise.all([
       fetch(`/api/transactions${query}`, { headers: { Authorization: `Bearer ${token}` } }),
       fetch(`/api/expenses${query}`, { headers: { Authorization: `Bearer ${token}` } })
     ]);
-    
+
     if (tRes.ok && eRes.ok) {
       const transactions = await tRes.json();
       const expenses = await eRes.json();
-      
+
       const merged = [
         ...transactions.map((t: any) => ({ ...t, type: 'transaction' })),
         ...expenses.map((e: any) => ({ ...e, type: 'expense' }))
       ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      
+
       setHistoryData(merged);
     }
   };
@@ -416,14 +439,14 @@ export default function App() {
     const s = start || managerStartDate;
     const e = end || managerEndDate;
     const c = cashierId || selectedCashierId;
-    
+
     let url = `/api/stats?period=${p}`;
     if (tenantId) url += `&tenant_id=${tenantId}`;
     if (c && c !== 'all') url += `&cashier_id=${c}`;
     if (p === 'custom' && s && e) {
       url += `&startDate=${s}&endDate=${e}`;
     }
-    
+
     const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     if (res.ok) setStats(await res.json());
   };
@@ -506,7 +529,7 @@ export default function App() {
   const exportToCSV = (data: any[], filename: string) => {
     if (data.length === 0) return;
     const headers = Object.keys(data[0]).join(',');
-    const rows = data.map(row => 
+    const rows = data.map(row =>
       Object.values(row).map(val => `"${val}"`).join(',')
     ).join('\n');
     const csvContent = `data:text/csv;charset=utf-8,${headers}\n${rows}`;
@@ -521,7 +544,7 @@ export default function App() {
 
   const globalStats = useMemo(() => {
     let filteredTransactions = allTransactions;
-    
+
     if (selectedDashboardTenant !== 'all') {
       filteredTransactions = filteredTransactions.filter(t => t.tenant_id === selectedDashboardTenant);
     }
@@ -606,7 +629,7 @@ export default function App() {
       setShowSuccess(true);
       fetchHistory();
       fetchStats();
-      
+
       setTimeout(() => {
         setShowSuccess(false);
         setMatricule('');
@@ -625,13 +648,13 @@ export default function App() {
     return historyData.filter((item: any) => {
       if (item.type === 'expense') {
         return (
-          item.description.toLowerCase().includes(q) || 
+          item.description.toLowerCase().includes(q) ||
           (item.category && item.category.toLowerCase().includes(q)) ||
           (item.cashier_name && item.cashier_name.toLowerCase().includes(q))
         );
       }
       return (
-        item.matricule.toLowerCase().includes(q) || 
+        item.matricule.toLowerCase().includes(q) ||
         (item.phone && item.phone.includes(q)) ||
         (item.washer_name && item.washer_name.toLowerCase().includes(q)) ||
         (item.cashier_name && item.cashier_name.toLowerCase().includes(q)) ||
@@ -805,7 +828,7 @@ export default function App() {
   if (!user) {
     return (
       <div className="fixed inset-0 bg-blue-600 flex items-center justify-center p-4">
-        <motion.div 
+        <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           className="bg-white w-full max-w-md p-8 rounded-[2.5rem] shadow-2xl"
@@ -824,8 +847,8 @@ export default function App() {
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Utilisateur</label>
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={loginUsername}
                   onChange={(e) => setLoginUsername(e.target.value)}
                   className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-blue-600 transition-colors text-slate-900 font-bold"
@@ -838,8 +861,8 @@ export default function App() {
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Mot de passe</label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
-                <input 
-                  type="password" 
+                <input
+                  type="password"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-blue-600 transition-colors text-slate-900 font-bold"
@@ -850,7 +873,7 @@ export default function App() {
 
             {loginError && <p className="text-red-500 text-xs font-bold text-center">{loginError}</p>}
 
-            <button 
+            <button
               type="submit"
               className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-blue-100 active:scale-95 transition-transform"
             >
@@ -864,7 +887,7 @@ export default function App() {
 
   return (
     <div className="fixed inset-0 bg-[#F8FAFC] font-sans text-slate-900 flex flex-col overflow-hidden">
-      
+
       {/* Compact Top Bar */}
       <header className="bg-white px-4 py-3 flex items-center justify-between border-b border-slate-100 shadow-sm z-20">
         <div className="flex items-center gap-2">
@@ -879,7 +902,7 @@ export default function App() {
 
         <div className="flex items-center gap-6">
           {(showTenantSuccess || showUserSuccess) && createdCredentials && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               className="bg-emerald-500 text-white px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 shadow-lg shadow-emerald-100"
@@ -895,7 +918,7 @@ export default function App() {
             </motion.div>
           )}
           {showTenantSuccess && !createdCredentials && user.role === 'super_manager' && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               className="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border border-emerald-100"
@@ -922,7 +945,7 @@ export default function App() {
       <div className="flex-1 overflow-hidden relative">
         <AnimatePresence mode="wait">
           {view === 'pos' && user.role !== 'manager' && user.role !== 'super_manager' && (
-            <motion.main 
+            <motion.main
               key="pos"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -935,7 +958,7 @@ export default function App() {
                   <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 block">
                     Matricule
                   </label>
-                  <input 
+                  <input
                     type="text"
                     placeholder="AB-123-CD"
                     value={matricule}
@@ -949,7 +972,7 @@ export default function App() {
                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 block">
                       Marque
                     </label>
-                    <select 
+                    <select
                       value={selectedBrand}
                       onChange={(e) => setSelectedBrand(e.target.value)}
                       className="w-full text-lg font-black tracking-tighter text-slate-900 bg-transparent outline-none appearance-none"
@@ -969,7 +992,7 @@ export default function App() {
                 </label>
                 <div className="flex items-center gap-2">
                   <Phone className="w-3 h-3 text-slate-300" />
-                  <input 
+                  <input
                     type="tel"
                     placeholder="07..."
                     value={phone}
@@ -991,8 +1014,8 @@ export default function App() {
                       type="button"
                       onClick={() => setSelectedVehicleId(v.id)}
                       className={`flex-shrink-0 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 transition-all ${
-                        selectedVehicleId === v.id 
-                          ? 'border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-100' 
+                        selectedVehicleId === v.id
+                          ? 'border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-100'
                           : 'border-white bg-white text-slate-400 shadow-sm'
                       }`}
                     >
@@ -1015,8 +1038,8 @@ export default function App() {
                       type="button"
                       onClick={() => setSelectedWasherId(w.id)}
                       className={`flex-shrink-0 flex items-center gap-2 py-2 px-4 rounded-xl border-2 transition-all ${
-                        selectedWasherId === w.id 
-                          ? 'border-blue-600 bg-blue-600 text-white shadow-md' 
+                        selectedWasherId === w.id
+                          ? 'border-blue-600 bg-blue-600 text-white shadow-md'
                           : 'border-white bg-white text-slate-400 shadow-sm'
                       }`}
                     >
@@ -1044,8 +1067,8 @@ export default function App() {
                         type="button"
                         onClick={() => setSelectedServiceLabel(label)}
                         className={`flex flex-col items-center justify-center gap-1 p-3 rounded-2xl border-2 transition-all ${
-                          selectedServiceLabel === label 
-                            ? 'border-blue-600 bg-blue-50 text-blue-600 shadow-sm' 
+                          selectedServiceLabel === label
+                            ? 'border-blue-600 bg-blue-50 text-blue-600 shadow-sm'
                             : 'border-white bg-white text-slate-400 shadow-sm'
                         }`}
                       >
@@ -1063,7 +1086,7 @@ export default function App() {
               {/* 5. Expense Section for Cashier - Only if enabled */}
               {user.expenses_enabled !== 0 && (
                 <div className="pt-4 border-t border-slate-100">
-                  <button 
+                  <button
                     onClick={() => setShowExpenseForm(!showExpenseForm)}
                     className="w-full flex items-center justify-between p-4 bg-red-50 rounded-2xl text-red-600 transition-all active:scale-95"
                   >
@@ -1075,7 +1098,7 @@ export default function App() {
                   </button>
 
                   {showExpenseForm && (
-                    <motion.div 
+                    <motion.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       className="mt-3 space-y-3"
@@ -1083,27 +1106,27 @@ export default function App() {
                       <div className="bg-white p-4 rounded-2xl border border-red-100 shadow-sm space-y-3">
                         <div className="space-y-1">
                           <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Description</label>
-                          <input 
-                            type="text" 
+                          <input
+                            type="text"
                             value={newExpenseDescription}
                             onChange={(e) => setNewExpenseDescription(e.target.value)}
                             placeholder="Ex: Achat savon..."
-                            className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-red-600 font-bold text-xs" 
+                            className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-red-600 font-bold text-xs"
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           <div className="space-y-1">
                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Montant (F)</label>
-                            <input 
-                              type="number" 
+                            <input
+                              type="number"
                               value={newExpenseAmount}
                               onChange={(e) => setNewExpenseAmount(e.target.value)}
-                              className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-red-600 font-bold text-xs" 
+                              className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-red-600 font-bold text-xs"
                             />
                           </div>
                           <div className="space-y-1">
                             <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Catégorie</label>
-                            <select 
+                            <select
                               value={newExpenseCategory}
                               onChange={(e) => setNewExpenseCategory(e.target.value)}
                               className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-red-600 font-bold text-xs"
@@ -1115,28 +1138,35 @@ export default function App() {
                             </select>
                           </div>
                         </div>
-                        <button 
-                          onClick={async () => {
+                        <button
+                          onClick={() => {
                             if (!newExpenseDescription || !newExpenseAmount) return;
-                            const res = await fetch('/api/expenses', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                              body: JSON.stringify({ 
-                                description: newExpenseDescription, 
-                                amount: Number(newExpenseAmount),
-                                category: newExpenseCategory
-                              })
+                            confirmAction({
+                              title: 'Confirmer la dépense',
+                              message: `Voulez-vous enregistrer cette dépense de ${Number(newExpenseAmount).toLocaleString()} FCFA pour "${newExpenseDescription}" ?`,
+                              confirmText: 'Enregistrer',
+                              onConfirm: async () => {
+                                const res = await fetch('/api/expenses', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                  body: JSON.stringify({
+                                    description: newExpenseDescription,
+                                    amount: Number(newExpenseAmount),
+                                    category: newExpenseCategory
+                                  })
+                                });
+                                if (res.ok) {
+                                  setNewExpenseDescription('');
+                                  setNewExpenseAmount('');
+                                  setNewExpenseCategory('');
+                                  setShowExpenseSuccess(true);
+                                  setTimeout(() => setShowExpenseSuccess(false), 3000);
+                                  fetchExpenses();
+                                  fetchStats();
+                                  setShowExpenseForm(false);
+                                }
+                              }
                             });
-                            if (res.ok) {
-                              setNewExpenseDescription('');
-                              setNewExpenseAmount('');
-                              setNewExpenseCategory('');
-                              setShowExpenseSuccess(true);
-                              setTimeout(() => setShowExpenseSuccess(false), 3000);
-                              fetchExpenses();
-                              fetchStats();
-                              setShowExpenseForm(false);
-                            }
                           }}
                           className="w-full py-3 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-red-100 flex items-center justify-center gap-2"
                         >
@@ -1154,7 +1184,7 @@ export default function App() {
           )}
 
           {view === 'history' && (
-            <motion.main 
+            <motion.main
               key="history"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -1163,7 +1193,7 @@ export default function App() {
             >
               <div className="bg-white p-2 rounded-xl border border-slate-100 flex items-center gap-3 px-4 shadow-sm">
                 <Search className="w-4 h-4 text-slate-300" />
-                <input 
+                <input
                   type="text"
                   placeholder="Rechercher matricule, tel, laveur, caissier, marque..."
                   value={searchQuery}
@@ -1186,12 +1216,12 @@ export default function App() {
                 </div>
                 <TrendingUp className="w-4 h-4 text-blue-600" />
               </div>
-              
+
               <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                 {filteredHistoryData.length > 0 ? (
                   filteredHistoryData.map((item: any) => (
-                    <div 
-                      key={item.id} 
+                    <div
+                      key={item.id}
                       onClick={() => {
                         if (item.type === 'transaction') {
                           setSelectedTransaction(item);
@@ -1247,7 +1277,7 @@ export default function App() {
                         </div>
                         {user.role === 'super_manager' ? (
                           <div className="flex items-center gap-1">
-                            <button 
+                            <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setEditTransactionData({ ...item });
@@ -1260,18 +1290,24 @@ export default function App() {
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
-                            <button 
+                            <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (confirm(`Supprimer cette ${item.type === 'expense' ? 'dépense' : 'transaction'} ?`)) {
-                                  const url = item.type === 'expense' ? `/api/expenses/${item.id}` : `/api/transactions/${item.id}`;
-                                  fetch(url, {
-                                    method: 'DELETE',
-                                    headers: { Authorization: `Bearer ${token}` }
-                                  }).then(res => {
-                                    if (res.ok) fetchHistory('today');
-                                  });
-                                }
+                                confirmAction({
+                                  title: 'Suppression',
+                                  message: `Supprimer cette ${item.type === 'expense' ? 'dépense' : 'transaction'} ?`,
+                                  confirmText: 'Supprimer',
+                                  type: 'danger',
+                                  onConfirm: () => {
+                                    const url = item.type === 'expense' ? `/api/expenses/${item.id}` : `/api/transactions/${item.id}`;
+                                    fetch(url, {
+                                      method: 'DELETE',
+                                      headers: { Authorization: `Bearer ${token}` }
+                                    }).then(res => {
+                                      if (res.ok) fetchHistory('today');
+                                    });
+                                  }
+                                });
                               }}
                               className="p-2 text-slate-300 hover:text-red-500 transition-colors"
                             >
@@ -1295,7 +1331,7 @@ export default function App() {
           )}
 
           {view === 'global_history' && (
-            <motion.main 
+            <motion.main
               key="global_history"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -1304,7 +1340,7 @@ export default function App() {
             >
               <div className="bg-white p-2 rounded-xl border border-slate-100 flex items-center gap-3 px-4 shadow-sm">
                 <Search className="w-4 h-4 text-slate-300" />
-                <input 
+                <input
                   type="text"
                   placeholder="Rechercher matricule, tel, laveur, caissier, marque..."
                   value={searchQuery}
@@ -1354,8 +1390,8 @@ export default function App() {
                     <div className="grid grid-cols-2 gap-2 bg-white p-2 rounded-xl border border-slate-100 shadow-sm">
                       <div className="space-y-1">
                         <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">Début</label>
-                        <input 
-                          type="date" 
+                        <input
+                          type="date"
                           value={historyStartDate}
                           onChange={(e) => setHistoryStartDate(e.target.value)}
                           onBlur={() => {
@@ -1368,8 +1404,8 @@ export default function App() {
                       </div>
                       <div className="space-y-1">
                         <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-1">Fin</label>
-                        <input 
-                          type="date" 
+                        <input
+                          type="date"
                           value={historyEndDate}
                           onChange={(e) => setHistoryEndDate(e.target.value)}
                           onBlur={() => {
@@ -1422,7 +1458,7 @@ export default function App() {
                 </div>
                 <div className="flex items-center gap-2">
                   {user.role === 'super_manager' && (
-                    <button 
+                    <button
                       onClick={() => {
                         setSelectedHistoryTenant('all');
                         setHistoryPeriod('all');
@@ -1444,8 +1480,8 @@ export default function App() {
               <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                 {filteredHistoryData.length > 0 ? (
                   filteredHistoryData.map((item: any) => (
-                    <div 
-                      key={item.id} 
+                    <div
+                      key={item.id}
                       onClick={() => {
                         if (item.type === 'transaction') {
                           setSelectedTransaction(item);
@@ -1511,7 +1547,7 @@ export default function App() {
                         </div>
                         {user.role === 'super_manager' ? (
                           <div className="flex items-center gap-1">
-                            <button 
+                            <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setEditTransactionData({ ...item });
@@ -1524,18 +1560,24 @@ export default function App() {
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
-                            <button 
+                            <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                if (confirm(`Supprimer cette ${item.type === 'expense' ? 'dépense' : 'transaction'} ?`)) {
-                                  const url = item.type === 'expense' ? `/api/expenses/${item.id}` : `/api/transactions/${item.id}`;
-                                  fetch(url, {
-                                    method: 'DELETE',
-                                    headers: { Authorization: `Bearer ${token}` }
-                                  }).then(res => {
-                                    if (res.ok) fetchHistory('all');
-                                  });
-                                }
+                                confirmAction({
+                                  title: 'Suppression',
+                                  message: `Supprimer cette ${item.type === 'expense' ? 'dépense' : 'transaction'} ?`,
+                                  confirmText: 'Supprimer',
+                                  type: 'danger',
+                                  onConfirm: () => {
+                                    const url = item.type === 'expense' ? `/api/expenses/${item.id}` : `/api/transactions/${item.id}`;
+                                    fetch(url, {
+                                      method: 'DELETE',
+                                      headers: { Authorization: `Bearer ${token}` }
+                                    }).then(res => {
+                                      if (res.ok) fetchHistory('all');
+                                    });
+                                  }
+                                });
                               }}
                               className="p-2 text-slate-300 hover:text-red-500 transition-colors"
                             >
@@ -1559,7 +1601,7 @@ export default function App() {
           )}
 
           {view === 'super_dashboard' && user.role === 'super_manager' && (
-            <motion.main 
+            <motion.main
               key="super_dashboard"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -1568,7 +1610,7 @@ export default function App() {
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-black text-slate-900 tracking-tighter">Tableau de Bord Global</h2>
-                  <button 
+                  <button
                     onClick={() => exportToCSV(allTransactions, 'transactions_global')}
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100"
                   >
@@ -1618,8 +1660,8 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-2 bg-white p-3 rounded-2xl border border-slate-100 shadow-sm">
                     <div className="space-y-1">
                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Début</label>
-                      <input 
-                        type="date" 
+                      <input
+                        type="date"
                         value={superStartDate}
                         onChange={(e) => setSuperStartDate(e.target.value)}
                         className="w-full p-2 bg-slate-50 rounded-xl text-xs font-bold outline-none"
@@ -1627,8 +1669,8 @@ export default function App() {
                     </div>
                     <div className="space-y-1">
                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Fin</label>
-                      <input 
-                        type="date" 
+                      <input
+                        type="date"
                         value={superEndDate}
                         onChange={(e) => setSuperEndDate(e.target.value)}
                         className="w-full p-2 bg-slate-50 rounded-xl text-xs font-bold outline-none"
@@ -1657,56 +1699,56 @@ export default function App() {
                 </div>
                 <div className="h-[300px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart 
+                    <ComposedChart
                       data={globalStats.dailyHistory}
                       margin={{ top: 10, right: 10, left: 10, bottom: 20 }}
                       barGap={8}
                     >
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis 
-                        dataKey="date" 
-                        axisLine={false} 
-                        tickLine={false} 
+                      <XAxis
+                        dataKey="date"
+                        axisLine={false}
+                        tickLine={false}
                         tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
                         tickFormatter={(str) => {
                           const date = new Date(str);
                           return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
                         }}
                       />
-                      <YAxis 
-                        yAxisId="left" 
-                        axisLine={false} 
-                        tickLine={false} 
+                      <YAxis
+                        yAxisId="left"
+                        axisLine={false}
+                        tickLine={false}
                         tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
                         label={{ value: 'Lavages', angle: -90, position: 'insideLeft', style: { fontSize: 10, fontWeight: 900, fill: '#94a3b8' } }}
                       />
-                      <YAxis 
-                        yAxisId="right" 
-                        orientation="right" 
-                        axisLine={false} 
-                        tickLine={false} 
+                      <YAxis
+                        yAxisId="right"
+                        orientation="right"
+                        axisLine={false}
+                        tickLine={false}
                         tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
                         tickFormatter={(value) => `${value.toLocaleString()}`}
                         label={{ value: 'Recette (F)', angle: 90, position: 'insideRight', style: { fontSize: 10, fontWeight: 900, fill: '#94a3b8' } }}
                       />
                       <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-                      <Legend 
+                      <Legend
                         wrapperStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', paddingTop: '10px' }}
                       />
-                      <Bar 
+                      <Bar
                         yAxisId="left"
-                        dataKey="count" 
-                        name="Nombre de Lavages" 
-                        fill="#cbd5e1" 
+                        dataKey="count"
+                        name="Nombre de Lavages"
+                        fill="#cbd5e1"
                         radius={[4, 4, 0, 0]}
                         barSize={20}
                         animationDuration={1500}
                       />
-                      <Bar 
+                      <Bar
                         yAxisId="right"
-                        dataKey="revenue" 
-                        name="Chiffre d'Affaires" 
-                        fill="#1d4ed8" 
+                        dataKey="revenue"
+                        name="Chiffre d'Affaires"
+                        fill="#1d4ed8"
                         radius={[4, 4, 0, 0]}
                         barSize={20}
                         animationDuration={1500}
@@ -1719,7 +1761,7 @@ export default function App() {
           )}
 
           {view === 'super_create' && user.role === 'super_manager' && (
-            <motion.main 
+            <motion.main
               key="super_create"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1737,7 +1779,7 @@ export default function App() {
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Gestion Entreprise</p>
                       </div>
                     </div>
-                    <button 
+                    <button
                       onClick={() => setSelectedTenantId(null)}
                       className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all"
                     >
@@ -1753,14 +1795,14 @@ export default function App() {
                       </h3>
                       <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 space-y-4">
                         <div className="flex gap-2">
-                          <input 
-                            type="text" 
-                            placeholder="Nouveau type (ex: Camion)" 
+                          <input
+                            type="text"
+                            placeholder="Nouveau type (ex: Camion)"
                             value={newVehicleTypeLabel}
                             onChange={(e) => setNewVehicleTypeLabel(e.target.value)}
                             className="flex-1 px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold text-sm"
                           />
-                          <button 
+                          <button
                             onClick={async () => {
                               if (!newVehicleTypeLabel) return;
                               const res = await fetch('/api/vehicle-types', {
@@ -1784,7 +1826,7 @@ export default function App() {
                             <div key={vt.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                               <span className="text-xs font-bold text-slate-700">{vt.label}</span>
                               <div className="flex items-center gap-2">
-                                <button 
+                                <button
                                   onClick={() => {
                                     setEditingVehicleType(vt);
                                     setEditValue(vt.label);
@@ -1793,16 +1835,22 @@ export default function App() {
                                 >
                                   <Edit2 className="w-3 h-3" />
                                 </button>
-                                <button 
-                                  onClick={async () => {
-                                    if (confirm('Supprimer ce type de véhicule ?')) {
-                                      await fetch(`/api/vehicle-types/${vt.id}`, {
-                                        method: 'DELETE',
-                                        headers: { Authorization: `Bearer ${token}` }
-                                      });
-                                      fetchVehicleTypes(selectedTenantId!);
-                                      fetchServices(selectedTenantId!);
-                                    }
+                                <button
+                                  onClick={() => {
+                                    confirmAction({
+                                      title: 'Suppression',
+                                      message: 'Supprimer ce type de véhicule ?',
+                                      confirmText: 'Supprimer',
+                                      type: 'danger',
+                                      onConfirm: async () => {
+                                        await fetch(`/api/vehicle-types/${vt.id}`, {
+                                          method: 'DELETE',
+                                          headers: { Authorization: `Bearer ${token}` }
+                                        });
+                                        fetchVehicleTypes(selectedTenantId!);
+                                        fetchServices(selectedTenantId!);
+                                      }
+                                    });
                                   }}
                                   className="text-slate-300 hover:text-red-500 transition-colors"
                                 >
@@ -1821,14 +1869,14 @@ export default function App() {
                       </h3>
                       <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 space-y-4">
                         <div className="flex gap-2">
-                          <input 
-                            type="text" 
-                            placeholder="Nouvelle marque (ex: Tesla)" 
+                          <input
+                            type="text"
+                            placeholder="Nouvelle marque (ex: Tesla)"
                             value={newBrandName}
                             onChange={(e) => setNewBrandName(e.target.value)}
                             className="flex-1 px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold text-sm"
                           />
-                          <button 
+                          <button
                             onClick={async () => {
                               if (!newBrandName) return;
                               const res = await fetch('/api/brands', {
@@ -1851,7 +1899,7 @@ export default function App() {
                             <div key={b.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                               <span className="text-xs font-bold text-slate-700">{b.name}</span>
                               <div className="flex items-center gap-2">
-                                <button 
+                                <button
                                   onClick={() => {
                                     setEditingBrand(b);
                                     setEditValue(b.name);
@@ -1860,15 +1908,21 @@ export default function App() {
                                 >
                                   <Edit2 className="w-3 h-3" />
                                 </button>
-                                <button 
-                                  onClick={async () => {
-                                    if (confirm('Supprimer cette marque ?')) {
-                                      await fetch(`/api/brands/${b.id}`, {
-                                        method: 'DELETE',
-                                        headers: { Authorization: `Bearer ${token}` }
-                                      });
-                                      fetchBrands(selectedTenantId!);
-                                    }
+                                <button
+                                  onClick={() => {
+                                    confirmAction({
+                                      title: 'Suppression',
+                                      message: 'Supprimer cette marque ?',
+                                      confirmText: 'Supprimer',
+                                      type: 'danger',
+                                      onConfirm: async () => {
+                                        await fetch(`/api/brands/${b.id}`, {
+                                          method: 'DELETE',
+                                          headers: { Authorization: `Bearer ${token}` }
+                                        });
+                                        fetchBrands(selectedTenantId!);
+                                      }
+                                    });
                                   }}
                                   className="text-slate-300 hover:text-red-500 transition-colors"
                                 >
@@ -1889,14 +1943,14 @@ export default function App() {
                     </h3>
                     <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 space-y-6">
                       <div className="flex gap-2">
-                        <input 
-                          type="text" 
-                          placeholder="Nouvelle prestation (ex: Vitrage)" 
+                        <input
+                          type="text"
+                          placeholder="Nouvelle prestation (ex: Vitrage)"
                           value={newServiceLabel}
                           onChange={(e) => setNewServiceLabel(e.target.value)}
                           className="flex-1 px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold text-sm"
                         />
-                        <button 
+                        <button
                           onClick={async () => {
                             if (!newServiceLabel) return;
                             const res = await fetch('/api/services/labels', {
@@ -1921,7 +1975,7 @@ export default function App() {
                             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                               <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight">{label}</h4>
                               <div className="flex items-center gap-4">
-                                <button 
+                                <button
                                   onClick={() => {
                                     const service = services.find(s => s.label === label);
                                     if (service) {
@@ -1934,16 +1988,22 @@ export default function App() {
                                 >
                                   Modifier
                                 </button>
-                                <button 
-                                  onClick={async () => {
-                                    if (confirm(`Supprimer la prestation ${label} ?`)) {
-                                      await fetch('/api/services/labels', {
-                                        method: 'DELETE',
-                                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                                        body: JSON.stringify({ tenant_id: selectedTenantId, label })
-                                      });
-                                      fetchServices(selectedTenantId!);
-                                    }
+                                <button
+                                  onClick={() => {
+                                    confirmAction({
+                                      title: 'Suppression',
+                                      message: `Supprimer la prestation ${label} ?`,
+                                      confirmText: 'Supprimer',
+                                      type: 'danger',
+                                      onConfirm: async () => {
+                                        await fetch('/api/services/labels', {
+                                          method: 'DELETE',
+                                          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                          body: JSON.stringify({ tenant_id: selectedTenantId, label })
+                                        });
+                                        fetchServices(selectedTenantId!);
+                                      }
+                                    });
                                   }}
                                   className="text-[10px] font-black text-red-500 uppercase tracking-widest"
                                 >
@@ -1959,18 +2019,18 @@ export default function App() {
                                     {s.active === 0 && <span className="text-[8px] px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded-md font-black uppercase tracking-tighter">Inactif</span>}
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    <button 
+                                    <button
                                       onClick={() => toggleServiceActive(s.id, selectedTenantId!)}
                                       className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${
-                                        s.active === 0 
-                                          ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white' 
+                                        s.active === 0
+                                          ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white'
                                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                       }`}
                                     >
                                       {s.active === 0 ? 'Activer' : 'Désactiver'}
                                     </button>
-                                    <input 
-                                      type="number" 
+                                    <input
+                                      type="number"
                                       defaultValue={s.price}
                                       onBlur={async (e) => {
                                         const price = parseInt(e.target.value);
@@ -2001,16 +2061,16 @@ export default function App() {
                       <Users className="w-3 h-3" /> Utilisateurs & Laveurs
                     </h3>
                     <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 space-y-6">
-                      <form 
+                      <form
                         onSubmit={async (e) => {
                           e.preventDefault();
                           const res = await fetch('/api/users', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                            body: JSON.stringify({ 
-                              tenant_id: selectedTenantId, 
-                              username: newEmployeeUsername, 
-                              password: newEmployeePassword, 
+                            body: JSON.stringify({
+                              tenant_id: selectedTenantId,
+                              username: newEmployeeUsername,
+                              password: newEmployeePassword,
                               role: newEmployeeRole,
                               first_name: newEmployeeFirstName,
                               last_name: newEmployeeLastName,
@@ -2035,17 +2095,17 @@ export default function App() {
                         className="space-y-4"
                       >
                         <div className="grid grid-cols-2 gap-3">
-                          <input 
-                            type="text" 
-                            placeholder="Nom" 
+                          <input
+                            type="text"
+                            placeholder="Nom"
                             value={newEmployeeLastName}
                             onChange={(e) => setNewEmployeeLastName(e.target.value)}
                             className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-black outline-none focus:border-blue-600 focus:bg-white transition-all"
                             required
                           />
-                          <input 
-                            type="text" 
-                            placeholder="Prénom" 
+                          <input
+                            type="text"
+                            placeholder="Prénom"
                             value={newEmployeeFirstName}
                             onChange={(e) => setNewEmployeeFirstName(e.target.value)}
                             className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-black outline-none focus:border-blue-600 focus:bg-white transition-all"
@@ -2053,17 +2113,17 @@ export default function App() {
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                          <input 
-                            type="text" 
-                            placeholder="Téléphone" 
+                          <input
+                            type="text"
+                            placeholder="Téléphone"
                             value={newEmployeePhone}
                             onChange={(e) => setNewEmployeePhone(e.target.value)}
                             className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-black outline-none focus:border-blue-600 focus:bg-white transition-all"
                             required
                           />
-                          <input 
-                            type="text" 
-                            placeholder="Nom d'utilisateur" 
+                          <input
+                            type="text"
+                            placeholder="Nom d'utilisateur"
                             value={newEmployeeUsername}
                             onChange={(e) => setNewEmployeeUsername(e.target.value)}
                             className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-black outline-none focus:border-blue-600 focus:bg-white transition-all"
@@ -2071,7 +2131,7 @@ export default function App() {
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                          <select 
+                          <select
                             value={newEmployeeRole}
                             onChange={(e: any) => setNewEmployeeRole(e.target.value)}
                             className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-black outline-none focus:border-blue-600 focus:bg-white transition-all"
@@ -2080,9 +2140,9 @@ export default function App() {
                             {user?.role === 'super_manager' && <option value="manager">Manager</option>}
                             <option value="washer">Laveur</option>
                           </select>
-                          <input 
-                            type="password" 
-                            placeholder="Mot de passe" 
+                          <input
+                            type="password"
+                            placeholder="Mot de passe"
                             value={newEmployeePassword}
                             onChange={(e) => setNewEmployeePassword(e.target.value)}
                             className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-black outline-none focus:border-blue-600 focus:bg-white transition-all"
@@ -2108,7 +2168,7 @@ export default function App() {
                             </div>
                             <div className="flex items-center gap-2">
                               {u.role !== 'washer' && (
-                                <button 
+                                <button
                                   onClick={async () => {
                                     const res = await fetch(`/api/admin/login-as/${u.id}`, {
                                       method: 'POST',
@@ -2129,7 +2189,7 @@ export default function App() {
                                   <LogIn className="w-4 h-4" />
                                 </button>
                               )}
-                              <button 
+                              <button
                                 onClick={() => {
                                   setEditingUser(u);
                                   setEditFirstName(u.first_name || '');
@@ -2142,25 +2202,31 @@ export default function App() {
                               >
                                 <Edit2 className="w-4 h-4" />
                               </button>
-                              <button 
+                              <button
                                 onClick={() => toggleUserActive(u.id, selectedTenantId!)}
                                 className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${
-                                  u.active === 0 
-                                    ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white' 
+                                  u.active === 0
+                                    ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white'
                                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                 }`}
                               >
                                 {u.active === 0 ? 'Activer' : 'Désactiver'}
                               </button>
-                              <button 
-                                onClick={async () => {
-                                  if (confirm('Supprimer cet utilisateur ?')) {
-                                    await fetch(`/api/users/${u.id}`, {
-                                      method: 'DELETE',
-                                      headers: { Authorization: `Bearer ${token}` }
-                                    });
-                                    fetchUsers(selectedTenantId!);
-                                  }
+                              <button
+                                onClick={() => {
+                                  confirmAction({
+                                    title: 'Suppression',
+                                    message: 'Supprimer cet utilisateur ?',
+                                    confirmText: 'Supprimer',
+                                    type: 'danger',
+                                    onConfirm: async () => {
+                                      await fetch(`/api/users/${u.id}`, {
+                                        method: 'DELETE',
+                                        headers: { Authorization: `Bearer ${token}` }
+                                      });
+                                      fetchUsers(selectedTenantId!);
+                                    }
+                                  });
                                 }}
                                 className="text-slate-300 hover:text-red-500 transition-colors"
                               >
@@ -2183,48 +2249,48 @@ export default function App() {
                         <ResponsiveContainer width="100%" height="100%">
                           <ComposedChart data={managerPeriod === 'today' ? revenueTrend : stats.dailyHistory} barGap={6}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis 
-                              dataKey="date" 
-                              axisLine={false} 
-                              tickLine={false} 
+                            <XAxis
+                              dataKey="date"
+                              axisLine={false}
+                              tickLine={false}
                               tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }}
                               tickFormatter={(str) => {
                                 const date = new Date(str);
                                 return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
                               }}
                             />
-                            <YAxis 
+                            <YAxis
                               yAxisId="left"
-                              axisLine={false} 
-                              tickLine={false} 
+                              axisLine={false}
+                              tickLine={false}
                               tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }}
                             />
-                            <YAxis 
+                            <YAxis
                               yAxisId="right"
                               orientation="right"
-                              axisLine={false} 
-                              tickLine={false} 
+                              axisLine={false}
+                              tickLine={false}
                               tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }}
                               tickFormatter={(value) => `${value.toLocaleString()}`}
                             />
                             <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-                            <Legend 
+                            <Legend
                               wrapperStyle={{ fontSize: '9px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', paddingTop: '10px' }}
                             />
-                            <Bar 
+                            <Bar
                               yAxisId="left"
-                              dataKey="count" 
-                              name="Lavages" 
-                              fill="#cbd5e1" 
+                              dataKey="count"
+                              name="Lavages"
+                              fill="#cbd5e1"
                               radius={[4, 4, 0, 0]}
                               barSize={12}
                               animationDuration={1500}
                             />
-                            <Bar 
+                            <Bar
                               yAxisId="right"
-                              dataKey="revenue" 
-                              name="Recette" 
-                              fill="#1d4ed8" 
+                              dataKey="revenue"
+                              name="Recette"
+                              fill="#1d4ed8"
                               radius={[4, 4, 0, 0]}
                               barSize={12}
                               animationDuration={1500}
@@ -2244,8 +2310,8 @@ export default function App() {
                     <form onSubmit={handleCreateTenant} className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 space-y-4">
                       <div className="space-y-1">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nom de l'entreprise</label>
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           value={newTenantName}
                           onChange={(e) => setNewTenantName(e.target.value)}
                           className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold"
@@ -2255,8 +2321,8 @@ export default function App() {
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Manager</label>
-                          <input 
-                            type="text" 
+                          <input
+                            type="text"
                             value={newTenantManager}
                             onChange={(e) => setNewTenantManager(e.target.value)}
                             className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold"
@@ -2265,8 +2331,8 @@ export default function App() {
                         </div>
                         <div className="space-y-1">
                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Mot de passe</label>
-                          <input 
-                            type="password" 
+                          <input
+                            type="password"
                             value={newTenantPass}
                             onChange={(e) => setNewTenantPass(e.target.value)}
                             className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold"
@@ -2287,9 +2353,9 @@ export default function App() {
                     <div className="space-y-3">
                       <div className="relative">
                         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                        <input 
-                          type="text" 
-                          placeholder="Rechercher une entreprise..." 
+                        <input
+                          type="text"
+                          placeholder="Rechercher une entreprise..."
                           value={tenantSearchQuery}
                           onChange={(e) => setTenantSearchQuery(e.target.value)}
                           className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold text-[10px] uppercase tracking-widest shadow-sm transition-all"
@@ -2311,39 +2377,39 @@ export default function App() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <button 
+                            <button
                               onClick={() => toggleTenantBrands(t.id, t.brands_enabled)}
                               className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                                t.brands_enabled === 1 
-                                  ? 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white' 
+                                t.brands_enabled === 1
+                                  ? 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white'
                                   : 'bg-slate-50 text-slate-600 hover:bg-slate-200'
                               }`}
                               title={t.brands_enabled === 1 ? "Désactiver les marques" : "Activer les marques"}
                             >
                               {t.brands_enabled === 1 ? 'Marques ON' : 'Marques OFF'}
                             </button>
-                            <button 
+                            <button
                               onClick={() => toggleTenantExpenses(t.id, t.expenses_enabled)}
                               className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                                t.expenses_enabled !== 0 
-                                  ? 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white' 
+                                t.expenses_enabled !== 0
+                                  ? 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white'
                                   : 'bg-slate-50 text-slate-600 hover:bg-slate-200'
                               }`}
                               title={t.expenses_enabled !== 0 ? "Désactiver les dépenses" : "Activer les dépenses"}
                             >
                               {t.expenses_enabled !== 0 ? 'Dépenses ON' : 'Dépenses OFF'}
                             </button>
-                            <button 
+                            <button
                               onClick={() => toggleTenantActive(t.id)}
                               className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                                t.active === 0 
-                                  ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white' 
+                                t.active === 0
+                                  ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white'
                                   : 'bg-slate-50 text-slate-600 hover:bg-slate-200'
                               }`}
                             >
                               {t.active === 0 ? 'Activer' : 'Désactiver'}
                             </button>
-                            <button 
+                            <button
                               onClick={() => {
                                 setEditingTenant(t);
                                 setEditValue(t.name);
@@ -2352,7 +2418,7 @@ export default function App() {
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
-                            <button 
+                            <button
                               onClick={() => {
                                 setSelectedTenantId(t.id);
                                 fetchVehicleTypes(t.id);
@@ -2364,19 +2430,25 @@ export default function App() {
                             >
                               Gérer
                             </button>
-                            <button 
-                              onClick={async (e) => {
+                            <button
+                              onClick={(e) => {
                                 e.stopPropagation();
-                                if (window.confirm('⚠️ ATTENTION : Supprimer cette entreprise effacera DÉFINITIVEMENT toutes ses transactions, ses tarifs et ses utilisateurs. Continuer ?')) {
-                                  const res = await fetch(`/api/admin/tenants/${t.id}`, {
-                                    method: 'DELETE',
-                                    headers: { Authorization: `Bearer ${token}` }
-                                  });
-                                  if (res.ok) {
-                                    fetchTenants();
-                                    fetchAllData();
+                                confirmAction({
+                                  title: '⚠️ ATTENTION',
+                                  message: 'Supprimer cette entreprise effacera DÉFINITIVEMENT toutes ses transactions, ses tarifs et ses utilisateurs. Continuer ?',
+                                  confirmText: 'Supprimer Définitivement',
+                                  type: 'danger',
+                                  onConfirm: async () => {
+                                    const res = await fetch(`/api/admin/tenants/${t.id}`, {
+                                      method: 'DELETE',
+                                      headers: { Authorization: `Bearer ${token}` }
+                                    });
+                                    if (res.ok) {
+                                      fetchTenants();
+                                      fetchAllData();
+                                    }
                                   }
-                                }
+                                });
                               }}
                               className="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all"
                             >
@@ -2394,7 +2466,7 @@ export default function App() {
         )}
 
           {(view === 'admin' && user.role === 'super_manager') && (
-            <motion.main 
+            <motion.main
               key="admin"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -2413,7 +2485,7 @@ export default function App() {
                       </div>
                     </div>
                     {user.role === 'super_manager' && (
-                      <button 
+                      <button
                         onClick={() => setSelectedTenantId(null)}
                         className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all"
                       >
@@ -2430,14 +2502,14 @@ export default function App() {
                       </h3>
                       <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 space-y-4">
                         <div className="flex gap-2">
-                          <input 
-                            type="text" 
-                            placeholder="Nouveau type (ex: Camion)" 
+                          <input
+                            type="text"
+                            placeholder="Nouveau type (ex: Camion)"
                             value={newVehicleTypeLabel}
                             onChange={(e) => setNewVehicleTypeLabel(e.target.value)}
                             className="flex-1 px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold text-sm"
                           />
-                          <button 
+                          <button
                             onClick={async () => {
                               if (!newVehicleTypeLabel) return;
                               const res = await fetch('/api/vehicle-types', {
@@ -2461,7 +2533,7 @@ export default function App() {
                             <div key={vt.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                               <span className="text-xs font-bold text-slate-700">{vt.label}</span>
                               <div className="flex items-center gap-2">
-                                <button 
+                                <button
                                   onClick={() => {
                                     setEditingVehicleType(vt);
                                     setEditValue(vt.label);
@@ -2470,16 +2542,22 @@ export default function App() {
                                 >
                                   <Edit2 className="w-3 h-3" />
                                 </button>
-                                <button 
-                                  onClick={async () => {
-                                    if (confirm('Supprimer ce type de véhicule ?')) {
-                                      await fetch(`/api/vehicle-types/${vt.id}`, {
-                                        method: 'DELETE',
-                                        headers: { Authorization: `Bearer ${token}` }
-                                      });
-                                      fetchVehicleTypes(selectedTenantId!);
-                                      fetchServices(selectedTenantId!);
-                                    }
+                                <button
+                                  onClick={() => {
+                                    confirmAction({
+                                      title: 'Suppression',
+                                      message: 'Supprimer ce type de véhicule ?',
+                                      confirmText: 'Supprimer',
+                                      type: 'danger',
+                                      onConfirm: async () => {
+                                        await fetch(`/api/vehicle-types/${vt.id}`, {
+                                          method: 'DELETE',
+                                          headers: { Authorization: `Bearer ${token}` }
+                                        });
+                                        fetchVehicleTypes(selectedTenantId!);
+                                        fetchServices(selectedTenantId!);
+                                      }
+                                    });
                                   }}
                                   className="text-slate-300 hover:text-red-500 transition-colors"
                                 >
@@ -2499,14 +2577,14 @@ export default function App() {
                         </h3>
                         <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 space-y-4">
                           <div className="flex gap-2">
-                            <input 
-                              type="text" 
-                              placeholder="Nouvelle marque (ex: Tesla)" 
+                            <input
+                              type="text"
+                              placeholder="Nouvelle marque (ex: Tesla)"
                               value={newBrandName}
                               onChange={(e) => setNewBrandName(e.target.value)}
                               className="flex-1 px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold text-sm"
                             />
-                            <button 
+                            <button
                               onClick={async () => {
                                 if (!newBrandName) return;
                                 const res = await fetch('/api/brands', {
@@ -2529,7 +2607,7 @@ export default function App() {
                               <div key={b.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                                 <span className="text-xs font-bold text-slate-700">{b.name}</span>
                                 <div className="flex items-center gap-2">
-                                  <button 
+                                  <button
                                     onClick={() => {
                                       setEditingBrand(b);
                                       setEditValue(b.name);
@@ -2538,15 +2616,21 @@ export default function App() {
                                   >
                                     <Edit2 className="w-3 h-3" />
                                   </button>
-                                  <button 
-                                    onClick={async () => {
-                                      if (confirm('Supprimer cette marque ?')) {
-                                        await fetch(`/api/brands/${b.id}`, {
-                                          method: 'DELETE',
-                                          headers: { Authorization: `Bearer ${token}` }
-                                        });
-                                        fetchBrands(selectedTenantId!);
-                                      }
+                                  <button
+                                    onClick={() => {
+                                      confirmAction({
+                                        title: 'Suppression',
+                                        message: 'Supprimer cette marque ?',
+                                        confirmText: 'Supprimer',
+                                        type: 'danger',
+                                        onConfirm: async () => {
+                                          await fetch(`/api/brands/${b.id}`, {
+                                            method: 'DELETE',
+                                            headers: { Authorization: `Bearer ${token}` }
+                                          });
+                                          fetchBrands(selectedTenantId!);
+                                        }
+                                      });
                                     }}
                                     className="text-slate-300 hover:text-red-500 transition-colors"
                                   >
@@ -2568,14 +2652,14 @@ export default function App() {
                     </h3>
                     <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 space-y-6">
                       <div className="flex gap-2">
-                        <input 
-                          type="text" 
-                          placeholder="Nouvelle prestation (ex: Vitrage)" 
+                        <input
+                          type="text"
+                          placeholder="Nouvelle prestation (ex: Vitrage)"
                           value={newServiceLabel}
                           onChange={(e) => setNewServiceLabel(e.target.value)}
                           className="flex-1 px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold text-sm"
                         />
-                        <button 
+                        <button
                           onClick={async () => {
                             if (!newServiceLabel) return;
                             const res = await fetch('/api/services/labels', {
@@ -2600,7 +2684,7 @@ export default function App() {
                             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                               <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight">{label}</h4>
                               <div className="flex items-center gap-4">
-                                <button 
+                                <button
                                   onClick={() => {
                                     const service = services.find(s => s.label === label);
                                     if (service) {
@@ -2613,16 +2697,22 @@ export default function App() {
                                 >
                                   Modifier
                                 </button>
-                                <button 
-                                  onClick={async () => {
-                                    if (confirm(`Supprimer la prestation ${label} ?`)) {
-                                      await fetch('/api/services/labels', {
-                                        method: 'DELETE',
-                                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                                        body: JSON.stringify({ tenant_id: selectedTenantId, label })
-                                      });
-                                      fetchServices(selectedTenantId!);
-                                    }
+                                <button
+                                  onClick={() => {
+                                    confirmAction({
+                                      title: 'Suppression',
+                                      message: `Supprimer la prestation ${label} ?`,
+                                      confirmText: 'Supprimer',
+                                      type: 'danger',
+                                      onConfirm: async () => {
+                                        await fetch('/api/services/labels', {
+                                          method: 'DELETE',
+                                          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                          body: JSON.stringify({ tenant_id: selectedTenantId, label })
+                                        });
+                                        fetchServices(selectedTenantId!);
+                                      }
+                                    });
                                   }}
                                   className="text-[10px] font-black text-red-500 uppercase tracking-widest"
                                 >
@@ -2638,18 +2728,18 @@ export default function App() {
                                     {s.active === 0 && <span className="text-[8px] px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded-md font-black uppercase tracking-tighter">Inactif</span>}
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    <button 
+                                    <button
                                       onClick={() => toggleServiceActive(s.id, selectedTenantId!)}
                                       className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${
-                                        s.active === 0 
-                                          ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white' 
+                                        s.active === 0
+                                          ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white'
                                           : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                       }`}
                                     >
                                       {s.active === 0 ? 'Activer' : 'Désactiver'}
                                     </button>
-                                    <input 
-                                      type="number" 
+                                    <input
+                                      type="number"
                                       defaultValue={s.price}
                                       onBlur={async (e) => {
                                         const price = parseInt(e.target.value);
@@ -2680,16 +2770,16 @@ export default function App() {
                       <Users className="w-3 h-3" /> Utilisateurs & Laveurs
                     </h3>
                     <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 space-y-6">
-                      <form 
+                      <form
                         onSubmit={async (e) => {
                           e.preventDefault();
                           const res = await fetch('/api/users', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                            body: JSON.stringify({ 
-                              tenant_id: selectedTenantId, 
-                              username: newEmployeeUsername, 
-                              password: newEmployeePassword, 
+                            body: JSON.stringify({
+                              tenant_id: selectedTenantId,
+                              username: newEmployeeUsername,
+                              password: newEmployeePassword,
                               role: newEmployeeRole,
                               first_name: newEmployeeFirstName,
                               last_name: newEmployeeLastName,
@@ -2708,17 +2798,17 @@ export default function App() {
                         className="space-y-4"
                       >
                         <div className="grid grid-cols-2 gap-3">
-                          <input 
-                            type="text" 
-                            placeholder="Nom" 
+                          <input
+                            type="text"
+                            placeholder="Nom"
                             value={newEmployeeLastName}
                             onChange={(e) => setNewEmployeeLastName(e.target.value)}
                             className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-black outline-none focus:border-blue-600 focus:bg-white transition-all"
                             required
                           />
-                          <input 
-                            type="text" 
-                            placeholder="Prénom" 
+                          <input
+                            type="text"
+                            placeholder="Prénom"
                             value={newEmployeeFirstName}
                             onChange={(e) => setNewEmployeeFirstName(e.target.value)}
                             className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-black outline-none focus:border-blue-600 focus:bg-white transition-all"
@@ -2726,17 +2816,17 @@ export default function App() {
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                          <input 
-                            type="text" 
-                            placeholder="Téléphone" 
+                          <input
+                            type="text"
+                            placeholder="Téléphone"
                             value={newEmployeePhone}
                             onChange={(e) => setNewEmployeePhone(e.target.value)}
                             className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-black outline-none focus:border-blue-600 focus:bg-white transition-all"
                             required
                           />
-                          <input 
-                            type="text" 
-                            placeholder="Nom d'utilisateur" 
+                          <input
+                            type="text"
+                            placeholder="Nom d'utilisateur"
                             value={newEmployeeUsername}
                             onChange={(e) => setNewEmployeeUsername(e.target.value)}
                             className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-black outline-none focus:border-blue-600 focus:bg-white transition-all"
@@ -2744,7 +2834,7 @@ export default function App() {
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                          <select 
+                          <select
                             value={newEmployeeRole}
                             onChange={(e: any) => setNewEmployeeRole(e.target.value)}
                             className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-black outline-none focus:border-blue-600 focus:bg-white transition-all"
@@ -2753,9 +2843,9 @@ export default function App() {
                             {user?.role === 'super_manager' && <option value="manager">Manager</option>}
                             <option value="washer">Laveur</option>
                           </select>
-                          <input 
-                            type="password" 
-                            placeholder="Mot de passe" 
+                          <input
+                            type="password"
+                            placeholder="Mot de passe"
                             value={newEmployeePassword}
                             onChange={(e) => setNewEmployeePassword(e.target.value)}
                             className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-black outline-none focus:border-blue-600 focus:bg-white transition-all"
@@ -2780,7 +2870,7 @@ export default function App() {
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <button 
+                              <button
                                 onClick={() => {
                                   setEditingUser(u);
                                   setEditFirstName(u.first_name || '');
@@ -2793,26 +2883,32 @@ export default function App() {
                               >
                                 <Edit2 className="w-4 h-4" />
                               </button>
-                              <button 
+                              <button
                                 onClick={() => toggleUserActive(u.id, selectedTenantId!)}
                                 className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${
-                                  u.active === 0 
-                                    ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white' 
+                                  u.active === 0
+                                    ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white'
                                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                 }`}
                               >
                                 {u.active === 0 ? 'Activer' : 'Désactiver'}
                               </button>
                               {(u.role !== 'manager' || user.role === 'super_manager') && (
-                                <button 
-                                  onClick={async () => {
-                                    if (confirm('Supprimer cet utilisateur ?')) {
-                                      await fetch(`/api/users/${u.id}`, {
-                                        method: 'DELETE',
-                                        headers: { Authorization: `Bearer ${token}` }
-                                      });
-                                      fetchUsers(selectedTenantId!);
-                                    }
+                                <button
+                                  onClick={() => {
+                                    confirmAction({
+                                      title: 'Suppression',
+                                      message: 'Supprimer cet utilisateur ?',
+                                      confirmText: 'Supprimer',
+                                      type: 'danger',
+                                      onConfirm: async () => {
+                                        await fetch(`/api/users/${u.id}`, {
+                                          method: 'DELETE',
+                                          headers: { Authorization: `Bearer ${token}` }
+                                        });
+                                        fetchUsers(selectedTenantId!);
+                                      }
+                                    });
                                   }}
                                   className="text-slate-300 hover:text-red-500 transition-colors"
                                 >
@@ -2836,48 +2932,48 @@ export default function App() {
                         <ResponsiveContainer width="100%" height="100%">
                           <ComposedChart data={managerPeriod === 'today' ? revenueTrend : stats.dailyHistory} barGap={6}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis 
-                              dataKey="date" 
-                              axisLine={false} 
-                              tickLine={false} 
+                            <XAxis
+                              dataKey="date"
+                              axisLine={false}
+                              tickLine={false}
                               tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }}
                               tickFormatter={(str) => {
                                 const date = new Date(str);
                                 return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
                               }}
                             />
-                            <YAxis 
+                            <YAxis
                               yAxisId="left"
-                              axisLine={false} 
-                              tickLine={false} 
+                              axisLine={false}
+                              tickLine={false}
                               tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }}
                             />
-                            <YAxis 
+                            <YAxis
                               yAxisId="right"
                               orientation="right"
-                              axisLine={false} 
-                              tickLine={false} 
+                              axisLine={false}
+                              tickLine={false}
                               tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }}
                               tickFormatter={(value) => `${value.toLocaleString()}`}
                             />
                             <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-                            <Legend 
+                            <Legend
                               wrapperStyle={{ fontSize: '9px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', paddingTop: '10px' }}
                             />
-                            <Bar 
+                            <Bar
                               yAxisId="left"
-                              dataKey="count" 
-                              name="Lavages" 
-                              fill="#cbd5e1" 
+                              dataKey="count"
+                              name="Lavages"
+                              fill="#cbd5e1"
                               radius={[4, 4, 0, 0]}
                               barSize={12}
                               animationDuration={1500}
                             />
-                            <Bar 
+                            <Bar
                               yAxisId="right"
-                              dataKey="revenue" 
-                              name="Recette" 
-                              fill="#1d4ed8" 
+                              dataKey="revenue"
+                              name="Recette"
+                              fill="#1d4ed8"
                               radius={[4, 4, 0, 0]}
                               barSize={12}
                               animationDuration={1500}
@@ -2909,39 +3005,39 @@ export default function App() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <button 
+                          <button
                             onClick={() => toggleTenantBrands(t.id, t.brands_enabled)}
                             className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                              t.brands_enabled === 1 
-                                ? 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white' 
+                              t.brands_enabled === 1
+                                ? 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white'
                                 : 'bg-slate-50 text-slate-600 hover:bg-slate-200'
                             }`}
                             title={t.brands_enabled === 1 ? "Désactiver les marques" : "Activer les marques"}
                           >
                             {t.brands_enabled === 1 ? 'Marques ON' : 'Marques OFF'}
                           </button>
-                          <button 
+                          <button
                             onClick={() => toggleTenantExpenses(t.id, t.expenses_enabled)}
                             className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                              t.expenses_enabled !== 0 
-                                ? 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white' 
+                              t.expenses_enabled !== 0
+                                ? 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white'
                                 : 'bg-slate-50 text-slate-600 hover:bg-slate-200'
                             }`}
                             title={t.expenses_enabled !== 0 ? "Désactiver les dépenses" : "Activer les dépenses"}
                           >
                             {t.expenses_enabled !== 0 ? 'Dépenses ON' : 'Dépenses OFF'}
                           </button>
-                          <button 
+                          <button
                             onClick={() => toggleTenantActive(t.id)}
                             className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                              t.active === 0 
-                                ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white' 
+                              t.active === 0
+                                ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white'
                                 : 'bg-slate-50 text-slate-600 hover:bg-slate-200'
                             }`}
                           >
                             {t.active === 0 ? 'Activer' : 'Désactiver'}
                           </button>
-                          <button 
+                          <button
                             onClick={() => {
                               setEditingTenant(t);
                               setEditValue(t.name);
@@ -2950,7 +3046,7 @@ export default function App() {
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
-                          <button 
+                          <button
                             onClick={() => {
                               setSelectedTenantId(t.id);
                               fetchVehicleTypes(t.id);
@@ -2962,19 +3058,25 @@ export default function App() {
                           >
                             Gérer
                           </button>
-                          <button 
-                            onClick={async (e) => {
+                          <button
+                            onClick={(e) => {
                               e.stopPropagation();
-                              if (window.confirm('⚠️ ATTENTION : Supprimer cette entreprise effacera DÉFINITIVEMENT toutes ses transactions, ses tarifs et ses utilisateurs. Continuer ?')) {
-                                const res = await fetch(`/api/admin/tenants/${t.id}`, {
-                                  method: 'DELETE',
-                                  headers: { Authorization: `Bearer ${token}` }
-                                });
-                                if (res.ok) {
-                                  fetchTenants();
-                                  fetchAllData();
+                              confirmAction({
+                                title: '⚠️ ATTENTION',
+                                message: 'Supprimer cette entreprise effacera DÉFINITIVEMENT toutes ses transactions, ses tarifs et ses utilisateurs. Continuer ?',
+                                confirmText: 'Supprimer Définitivement',
+                                type: 'danger',
+                                onConfirm: async () => {
+                                  const res = await fetch(`/api/admin/tenants/${t.id}`, {
+                                    method: 'DELETE',
+                                    headers: { Authorization: `Bearer ${token}` }
+                                  });
+                                  if (res.ok) {
+                                    fetchTenants();
+                                    fetchAllData();
+                                  }
                                 }
-                              }
+                              });
                             }}
                             className="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all"
                           >
@@ -2990,7 +3092,7 @@ export default function App() {
           )}
 
           {view === 'stats' && user.role === 'manager' && (
-            <motion.main 
+            <motion.main
               key="stats"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -3023,7 +3125,7 @@ export default function App() {
                   </div>
                   <div className="flex-1">
                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Filtrer par Caissier</label>
-                    <select 
+                    <select
                       value={selectedCashierId}
                       onChange={(e) => setSelectedCashierId(e.target.value)}
                       className="w-full bg-transparent text-xs font-black uppercase tracking-tighter outline-none"
@@ -3040,20 +3142,20 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-3 pt-2">
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Début</label>
-                      <input 
-                        type="date" 
+                      <input
+                        type="date"
                         value={managerStartDate}
                         onChange={(e) => setManagerStartDate(e.target.value)}
-                        className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold text-xs" 
+                        className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold text-xs"
                       />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Fin</label>
-                      <input 
-                        type="date" 
+                      <input
+                        type="date"
                         value={managerEndDate}
                         onChange={(e) => setManagerEndDate(e.target.value)}
-                        className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold text-xs" 
+                        className="w-full px-4 py-2 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold text-xs"
                       />
                     </div>
                   </div>
@@ -3101,56 +3203,56 @@ export default function App() {
                 </h3>
                 <div className="h-48 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart 
+                    <ComposedChart
                       data={managerPeriod === 'today' ? revenueTrend : stats.dailyHistory}
                       margin={{ top: 10, right: 10, left: 10, bottom: 20 }}
                       barGap={8}
                     >
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis 
-                        dataKey="date" 
-                        axisLine={false} 
-                        tickLine={false} 
+                      <XAxis
+                        dataKey="date"
+                        axisLine={false}
+                        tickLine={false}
                         tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
                         tickFormatter={(str) => {
                           const date = new Date(str);
                           return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
                         }}
                       />
-                      <YAxis 
+                      <YAxis
                         yAxisId="left"
-                        axisLine={false} 
-                        tickLine={false} 
+                        axisLine={false}
+                        tickLine={false}
                         tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
                         label={{ value: 'Lavages', angle: -90, position: 'insideLeft', style: { fontSize: 10, fontWeight: 900, fill: '#94a3b8' } }}
                       />
-                      <YAxis 
+                      <YAxis
                         yAxisId="right"
                         orientation="right"
-                        axisLine={false} 
-                        tickLine={false} 
+                        axisLine={false}
+                        tickLine={false}
                         tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
                         tickFormatter={(value) => `${value.toLocaleString()}`}
                         label={{ value: 'Recette (F)', angle: 90, position: 'insideRight', style: { fontSize: 10, fontWeight: 900, fill: '#94a3b8' } }}
                       />
                       <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f8fafc' }} />
-                      <Legend 
+                      <Legend
                         wrapperStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', paddingTop: '10px' }}
                       />
-                      <Bar 
+                      <Bar
                         yAxisId="left"
-                        dataKey="count" 
-                        name="Nombre de Lavages" 
-                        fill="#cbd5e1" 
+                        dataKey="count"
+                        name="Nombre de Lavages"
+                        fill="#cbd5e1"
                         radius={[4, 4, 0, 0]}
                         barSize={15}
                         animationDuration={1500}
                       />
-                      <Bar 
+                      <Bar
                         yAxisId="right"
-                        dataKey="revenue" 
-                        name="Chiffre d'Affaires" 
-                        fill="#1d4ed8" 
+                        dataKey="revenue"
+                        name="Chiffre d'Affaires"
+                        fill="#1d4ed8"
                         radius={[4, 4, 0, 0]}
                         barSize={15}
                         animationDuration={1500}
@@ -3196,7 +3298,7 @@ export default function App() {
           )}
 
           {view === 'personnel' && user.role === 'manager' && (
-            <motion.main 
+            <motion.main
               key="personnel"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -3207,15 +3309,15 @@ export default function App() {
                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                   <Plus className="w-4 h-4" /> Ajouter du personnel
                 </h3>
-                <form 
+                <form
                   onSubmit={async (e) => {
                     e.preventDefault();
                     const res = await fetch('/api/users', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                      body: JSON.stringify({ 
-                        username: newEmployeeUsername, 
-                        password: newEmployeePassword, 
+                      body: JSON.stringify({
+                        username: newEmployeeUsername,
+                        password: newEmployeePassword,
                         role: newEmployeeRole,
                         first_name: newEmployeeFirstName,
                         last_name: newEmployeeLastName,
@@ -3242,51 +3344,51 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nom</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={newEmployeeLastName}
                         onChange={(e) => setNewEmployeeLastName(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold" 
-                        required 
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold"
+                        required
                       />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Prénom</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={newEmployeeFirstName}
                         onChange={(e) => setNewEmployeeFirstName(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold" 
-                        required 
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold"
+                        required
                       />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Téléphone</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={newEmployeePhone}
                         onChange={(e) => setNewEmployeePhone(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold" 
-                        required 
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold"
+                        required
                       />
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nom d'utilisateur</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={newEmployeeUsername}
                         onChange={(e) => setNewEmployeeUsername(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold" 
-                        required 
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold"
+                        required
                       />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Rôle</label>
-                      <select 
+                      <select
                         value={newEmployeeRole}
                         onChange={(e: any) => setNewEmployeeRole(e.target.value)}
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold appearance-none"
@@ -3298,12 +3400,12 @@ export default function App() {
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Mot de passe</label>
-                      <input 
-                        type="password" 
+                      <input
+                        type="password"
                         value={newEmployeePassword}
                         onChange={(e) => setNewEmployeePassword(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold" 
-                        placeholder="Facultatif pour laveur" 
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold"
+                        placeholder="Facultatif pour laveur"
                       />
                     </div>
                   </div>
@@ -3337,7 +3439,7 @@ export default function App() {
                       </div>
                       <div className="flex items-center gap-3">
                         {user.role === 'super_manager' && u.role !== 'washer' && (
-                          <button 
+                          <button
                             onClick={async () => {
                               const res = await fetch(`/api/admin/login-as/${u.id}`, {
                                 method: 'POST',
@@ -3358,7 +3460,7 @@ export default function App() {
                             <LogIn className="w-4 h-4" />
                           </button>
                         )}
-                        <button 
+                        <button
                           onClick={() => {
                             setEditingUser(u);
                             setEditFirstName(u.first_name || '');
@@ -3371,11 +3473,11 @@ export default function App() {
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
-                        <button 
+                        <button
                           onClick={() => toggleUserActive(u.id)}
                           className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${
-                            u.active === 0 
-                              ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white' 
+                            u.active === 0
+                              ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white'
                               : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                           }`}
                         >
@@ -3383,15 +3485,21 @@ export default function App() {
                         </button>
                         <div className={`w-2 h-2 rounded-full ${u.role === 'manager' ? 'bg-blue-600' : 'bg-green-500'}`} />
                         {(user.role === 'manager' || user.role === 'super_manager') && (u.role !== 'manager' || user.role === 'super_manager') && (
-                          <button 
-                            onClick={async () => {
-                              if (confirm('Supprimer cet employé ?')) {
-                                const res = await fetch(`/api/users/${u.id}`, {
-                                  method: 'DELETE',
-                                  headers: { Authorization: `Bearer ${token}` }
-                                });
-                                if (res.ok) fetchUsers();
-                              }
+                          <button
+                            onClick={() => {
+                              confirmAction({
+                                title: 'Suppression',
+                                message: 'Supprimer cet employé ?',
+                                confirmText: 'Supprimer',
+                                type: 'danger',
+                                onConfirm: async () => {
+                                  const res = await fetch(`/api/users/${u.id}`, {
+                                    method: 'DELETE',
+                                    headers: { Authorization: `Bearer ${token}` }
+                                  });
+                                  if (res.ok) fetchUsers();
+                                }
+                              });
                             }}
                             className="p-1 text-slate-200 hover:text-red-500 transition-colors"
                           >
@@ -3410,11 +3518,11 @@ export default function App() {
 
       {/* Bottom Navigation & Action Bar */}
       <footer className="bg-white border-t border-slate-100 p-4 pb-6 shadow-[0_-4px_30px_rgba(0,0,0,0.03)]">
-        
+
         {/* View Switcher */}
         <div className="flex bg-slate-50 p-1 rounded-xl mb-4">
           {user.role === 'cashier' && (
-            <button 
+            <button
               onClick={() => setView('pos')}
               className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
                 view === 'pos' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400'
@@ -3425,7 +3533,7 @@ export default function App() {
             </button>
           )}
           {user.role === 'cashier' && (
-            <button 
+            <button
               onClick={() => setView('history')}
               className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
                 view === 'history' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400'
@@ -3436,7 +3544,7 @@ export default function App() {
             </button>
           )}
           {(user.role === 'manager' || user.role === 'super_manager') && (
-            <button 
+            <button
               onClick={() => setView('global_history')}
               className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
                 view === 'global_history' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400'
@@ -3448,7 +3556,7 @@ export default function App() {
           )}
           {user.role === 'manager' && (
             <>
-              <button 
+              <button
                 onClick={() => setView('stats')}
                 className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
                   view === 'stats' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400'
@@ -3457,7 +3565,7 @@ export default function App() {
                 <TrendingUp className="w-3 h-3" />
                 Stats
               </button>
-              <button 
+              <button
                 onClick={() => setView('personnel')}
                 className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
                   view === 'personnel' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400'
@@ -3470,7 +3578,7 @@ export default function App() {
           )}
           {user.role === 'super_manager' && (
             <>
-              <button 
+              <button
                 onClick={() => setView('super_dashboard')}
                 className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
                   view === 'super_dashboard' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400'
@@ -3479,7 +3587,7 @@ export default function App() {
                 <BarChart3 className="w-3 h-3" />
                 Dashboard
               </button>
-              <button 
+              <button
                 onClick={() => {
                   setSelectedTenantId(null);
                   setView('super_create');
@@ -3516,8 +3624,8 @@ export default function App() {
               onClick={handleValidate}
               disabled={showSuccess}
               className={`w-full py-4 rounded-xl font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
-                showSuccess 
-                  ? 'bg-blue-600 text-white' 
+                showSuccess
+                  ? 'bg-blue-600 text-white'
                   : 'bg-blue-600 text-white active:scale-95 shadow-xl shadow-blue-100'
               }`}
             >
@@ -3538,14 +3646,14 @@ export default function App() {
       <AnimatePresence>
         {selectedTransaction && (
           <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedTransaction(null)}
               className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             />
-            <motion.div 
+            <motion.div
               initial={{ y: 100, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
@@ -3608,7 +3716,7 @@ export default function App() {
                   </div>
                 </div>
 
-                <button 
+                <button
                   onClick={() => setSelectedTransaction(null)}
                   className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-transform"
                 >
@@ -3624,7 +3732,7 @@ export default function App() {
       <AnimatePresence>
         {(editingTenant || editingBrand || editingService || editingVehicleType || editingUser) && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -3637,7 +3745,7 @@ export default function App() {
               }}
               className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
             />
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
@@ -3646,15 +3754,15 @@ export default function App() {
               <h3 className="text-xl font-black text-slate-900 tracking-tighter mb-6 uppercase italic">
                 Modifier {editingTenant ? 'Entreprise' : editingBrand ? 'Marque' : editingService ? 'Service' : editingUser ? 'Utilisateur' : 'Type'}
               </h3>
-              
+
               <div className="space-y-4">
                 {editingUser ? (
                   <>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nom</label>
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           value={editLastName}
                           onChange={(e) => setEditLastName(e.target.value)}
                           className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-blue-600 transition-colors text-slate-900 font-bold"
@@ -3662,8 +3770,8 @@ export default function App() {
                       </div>
                       <div className="space-y-1">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Prénom</label>
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           value={editFirstName}
                           onChange={(e) => setEditFirstName(e.target.value)}
                           className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-blue-600 transition-colors text-slate-900 font-bold"
@@ -3672,8 +3780,8 @@ export default function App() {
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nom d'utilisateur</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={editUsername}
                         onChange={(e) => setEditUsername(e.target.value)}
                         className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-blue-600 transition-colors text-slate-900 font-bold"
@@ -3681,8 +3789,8 @@ export default function App() {
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Téléphone</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={editPhone}
                         onChange={(e) => setEditPhone(e.target.value)}
                         className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-blue-600 transition-colors text-slate-900 font-bold"
@@ -3690,8 +3798,8 @@ export default function App() {
                     </div>
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Réinitialiser le mot de passe</label>
-                      <input 
-                        type="password" 
+                      <input
+                        type="password"
                         value={editPassword}
                         onChange={(e) => setEditPassword(e.target.value)}
                         placeholder="Nouveau mot de passe (laisser vide si inchangé)"
@@ -3703,8 +3811,8 @@ export default function App() {
                   <>
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Libellé / Nom</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={editValue}
                         onChange={(e) => setEditValue(e.target.value)}
                         className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-blue-600 transition-colors text-slate-900 font-bold"
@@ -3714,8 +3822,8 @@ export default function App() {
                     {editingService && (
                       <div className="space-y-1">
                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Prix (FCFA)</label>
-                        <input 
-                          type="number" 
+                        <input
+                          type="number"
                           value={editPrice}
                           onChange={(e) => setEditPrice(Number(e.target.value))}
                           className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-blue-600 transition-colors text-slate-900 font-bold"
@@ -3726,7 +3834,7 @@ export default function App() {
                 )}
 
                 <div className="flex gap-3 pt-4">
-                  <button 
+                  <button
                     onClick={() => {
                       setEditingTenant(null);
                       setEditingBrand(null);
@@ -3738,7 +3846,7 @@ export default function App() {
                   >
                     Annuler
                   </button>
-                  <button 
+                  <button
                     onClick={async () => {
                       if (editingTenant) handleUpdateTenant();
                       else if (editingBrand) handleUpdateBrand();
@@ -3751,9 +3859,9 @@ export default function App() {
                         const res = await fetch(`/api/users/${editingUser.id}`, {
                           method: 'PATCH',
                           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                          body: JSON.stringify({ 
-                            first_name: editFirstName, 
-                            last_name: editLastName, 
+                          body: JSON.stringify({
+                            first_name: editFirstName,
+                            last_name: editLastName,
                             phone: editPhone,
                             username: editUsername,
                             password: editPassword || undefined
@@ -3785,7 +3893,7 @@ export default function App() {
       <AnimatePresence>
         {isEditingTransaction && editTransactionData && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-50 p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -3797,7 +3905,7 @@ export default function App() {
                     <h2 className="text-xl font-black text-slate-900 tracking-tight">Modifier Lavage</h2>
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">ID: {editTransactionData.id}</p>
                   </div>
-                  <button 
+                  <button
                     onClick={() => setIsEditingTransaction(false)}
                     className="w-10 h-10 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center hover:bg-slate-100 transition-colors"
                   >
@@ -3809,8 +3917,8 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Matricule</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={editTransactionData.matricule}
                         onChange={(e) => setEditTransactionData({ ...editTransactionData, matricule: e.target.value })}
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-blue-600 font-bold text-sm"
@@ -3818,8 +3926,8 @@ export default function App() {
                     </div>
                     <div className="space-y-1">
                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Téléphone</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={editTransactionData.phone || ''}
                         onChange={(e) => setEditTransactionData({ ...editTransactionData, phone: e.target.value })}
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-blue-600 font-bold text-sm"
@@ -3830,14 +3938,14 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Véhicule</label>
-                      <select 
+                      <select
                         value={editTransactionData.vehicle_type}
                         onChange={(e) => {
                           const newVt = e.target.value;
                           const vt = vehicleTypes.find(v => v.name === newVt);
                           const service = services.find(s => s.vehicle_type_id === vt?.id && s.label === editTransactionData.service_label);
-                          setEditTransactionData({ 
-                            ...editTransactionData, 
+                          setEditTransactionData({
+                            ...editTransactionData,
                             vehicle_type: newVt,
                             price: service ? service.price : editTransactionData.price
                           });
@@ -3851,14 +3959,14 @@ export default function App() {
                     </div>
                     <div className="space-y-1">
                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Service</label>
-                      <select 
+                      <select
                         value={editTransactionData.service_label}
                         onChange={(e) => {
                           const newLabel = e.target.value;
                           const vt = vehicleTypes.find(v => v.name === editTransactionData.vehicle_type);
                           const service = services.find(s => s.vehicle_type_id === vt?.id && s.label === newLabel);
-                          setEditTransactionData({ 
-                            ...editTransactionData, 
+                          setEditTransactionData({
+                            ...editTransactionData,
                             service_label: newLabel,
                             price: service ? service.price : editTransactionData.price
                           });
@@ -3875,8 +3983,8 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Marque</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={editTransactionData.brand || ''}
                         onChange={(e) => setEditTransactionData({ ...editTransactionData, brand: e.target.value })}
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-blue-600 font-bold text-sm"
@@ -3884,8 +3992,8 @@ export default function App() {
                     </div>
                     <div className="space-y-1">
                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Prix (F)</label>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         value={editTransactionData.price}
                         onChange={(e) => setEditTransactionData({ ...editTransactionData, price: parseInt(e.target.value) })}
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-blue-600 font-bold text-sm"
@@ -3895,7 +4003,7 @@ export default function App() {
 
                   <div className="space-y-1">
                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Laveur</label>
-                    <select 
+                    <select
                       value={editTransactionData.washer_id || ''}
                       onChange={(e) => setEditTransactionData({ ...editTransactionData, washer_id: e.target.value })}
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-blue-600 font-bold text-sm"
@@ -3909,13 +4017,13 @@ export default function App() {
                 </div>
 
                 <div className="flex gap-3 pt-2">
-                  <button 
+                  <button
                     onClick={() => setIsEditingTransaction(false)}
                     className="flex-1 py-4 bg-slate-50 text-slate-400 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-100 transition-all"
                   >
                     Annuler
                   </button>
-                  <button 
+                  <button
                     onClick={async () => {
                       const res = await fetch(`/api/admin/transactions/${editTransactionData.id}`, {
                         method: 'PUT',
@@ -3942,13 +4050,13 @@ export default function App() {
       {/* Success Overlay */}
       <AnimatePresence>
         {showSuccess && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-blue-600/90 backdrop-blur-sm flex items-center justify-center z-50 p-8"
           >
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.5, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               className="bg-white p-8 rounded-[2rem] shadow-2xl flex flex-col items-center text-center gap-4"
@@ -3962,6 +4070,58 @@ export default function App() {
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Confirmation Modal */}
+      <AnimatePresence>
+        {showConfirmModal && confirmModalConfig && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowConfirmModal(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative w-full max-w-xs bg-white rounded-[2rem] shadow-2xl overflow-hidden p-6 text-center"
+            >
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                confirmModalConfig.type === 'danger' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
+              }`}>
+                {confirmModalConfig.type === 'danger' ? <Trash2 className="w-6 h-6" /> : <Info className="w-6 h-6" />}
+              </div>
+              <h3 className="text-lg font-black text-slate-900 mb-2">{confirmModalConfig.title}</h3>
+              <p className="text-xs font-medium text-slate-500 mb-6 leading-relaxed">
+                {confirmModalConfig.message}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowConfirmModal(false)}
+                  className="flex-1 py-3 bg-slate-50 text-slate-400 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-100 transition-all"
+                >
+                  {confirmModalConfig.cancelText || 'Annuler'}
+                </button>
+                <button
+                  onClick={() => {
+                    confirmModalConfig.onConfirm();
+                    setShowConfirmModal(false);
+                  }}
+                  className={`flex-1 py-3 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg ${
+                    confirmModalConfig.type === 'danger'
+                      ? 'bg-red-600 hover:bg-red-700 shadow-red-100'
+                      : 'bg-blue-600 hover:bg-blue-700 shadow-blue-100'
+                  }`}
+                >
+                  {confirmModalConfig.confirmText || 'Confirmer'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
