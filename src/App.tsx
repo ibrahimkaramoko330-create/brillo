@@ -4645,8 +4645,8 @@ export default function App() {
                 <CheckCircle2 className="w-8 h-8" />
               </div>
               <div>
-                <p className="text-xl font-black text-slate-900">Lavage validé</p>
-                <p className="text-sm font-medium text-slate-400">Transaction ajoutée au journal</p>
+                <p className="text-xl font-black text-slate-900">C'est propre !</p>
+                <p className="text-sm font-medium text-slate-400">Le jeton est rentré</p>
               </div>
             </motion.div>
           </motion.div>
