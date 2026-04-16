@@ -98,6 +98,50 @@ const migrate = () => {
       console.error("Migration failed for tenants (expenses_enabled):", err);
     }
   }
+  // Migration for sites table
+  const sitesTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='sites'").get();
+  if (!sitesTable) {
+    console.log("Creating sites table...");
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS sites (
+        id TEXT PRIMARY KEY,
+        organization_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        active INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (organization_id) REFERENCES tenants(id)
+      )
+    `);
+  }
+
+  // Migration for organization_id and site_id in multiple tables
+  const tablesWithOrgAndSite = ['users', 'transactions', 'expenses', 'vehicle_types', 'vehicle_brands', 'services'];
+  for (const table of tablesWithOrgAndSite) {
+    const info = db.prepare(`PRAGMA table_info(${table})`).all() as any[];
+
+    if (!info.some(col => col.name === 'organization_id')) {
+      console.log(`Migrating ${table} table: adding organization_id...`);
+      try {
+        db.exec(`ALTER TABLE ${table} ADD COLUMN organization_id TEXT`);
+        // Initialize organization_id with tenant_id if it exists
+        if (info.some(col => col.name === 'tenant_id')) {
+          db.exec(`UPDATE ${table} SET organization_id = tenant_id`);
+        }
+      } catch (err) {
+        console.error(`Migration failed for ${table} (organization_id):`, err);
+      }
+    }
+
+    if (!info.some(col => col.name === 'site_id')) {
+      console.log(`Migrating ${table} table: adding site_id...`);
+      try {
+        db.exec(`ALTER TABLE ${table} ADD COLUMN site_id TEXT`);
+      } catch (err) {
+        console.error(`Migration failed for ${table} (site_id):`, err);
+      }
+    }
+  }
+
   // Migration for expenses table
   const expensesTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='expenses'").get();
   if (!expensesTable) {
@@ -136,26 +180,46 @@ db.exec(`
     name TEXT NOT NULL,
     active INTEGER DEFAULT 1,
     brands_enabled INTEGER DEFAULT 1,
+    expenses_enabled INTEGER DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS sites (
+    id TEXT PRIMARY KEY,
+    organization_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    active INTEGER DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (organization_id) REFERENCES tenants(id)
   );
 
   CREATE TABLE IF NOT EXISTS vehicle_types (
     id TEXT PRIMARY KEY,
     tenant_id TEXT NOT NULL,
+    organization_id TEXT,
+    site_id TEXT,
     label TEXT NOT NULL,
-    FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+    FOREIGN KEY (organization_id) REFERENCES tenants(id),
+    FOREIGN KEY (site_id) REFERENCES sites(id)
   );
 
   CREATE TABLE IF NOT EXISTS vehicle_brands (
     id TEXT PRIMARY KEY,
     tenant_id TEXT NOT NULL,
+    organization_id TEXT,
+    site_id TEXT,
     name TEXT NOT NULL,
-    FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+    FOREIGN KEY (organization_id) REFERENCES tenants(id),
+    FOREIGN KEY (site_id) REFERENCES sites(id)
   );
 
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     tenant_id TEXT,
+    organization_id TEXT,
+    site_id TEXT,
     username TEXT NOT NULL UNIQUE,
     password TEXT, -- Nullable for washers
     role TEXT NOT NULL, -- 'super_manager', 'manager', 'cashier', 'washer'
@@ -164,23 +228,31 @@ db.exec(`
     phone TEXT,
     active INTEGER DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+    FOREIGN KEY (organization_id) REFERENCES tenants(id),
+    FOREIGN KEY (site_id) REFERENCES sites(id)
   );
 
   CREATE TABLE IF NOT EXISTS services (
     id TEXT PRIMARY KEY,
     tenant_id TEXT NOT NULL,
+    organization_id TEXT,
+    site_id TEXT,
     label TEXT NOT NULL,
     vehicle_type_id TEXT NOT NULL,
     price INTEGER NOT NULL,
     active INTEGER DEFAULT 1,
     FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+    FOREIGN KEY (organization_id) REFERENCES tenants(id),
+    FOREIGN KEY (site_id) REFERENCES sites(id),
     FOREIGN KEY (vehicle_type_id) REFERENCES vehicle_types(id)
   );
 
   CREATE TABLE IF NOT EXISTS transactions (
     id TEXT PRIMARY KEY,
     tenant_id TEXT NOT NULL,
+    organization_id TEXT,
+    site_id TEXT,
     cashier_id TEXT NOT NULL,
     washer_id TEXT NOT NULL,
     matricule TEXT NOT NULL,
@@ -191,6 +263,8 @@ db.exec(`
     price INTEGER NOT NULL,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+    FOREIGN KEY (organization_id) REFERENCES tenants(id),
+    FOREIGN KEY (site_id) REFERENCES sites(id),
     FOREIGN KEY (cashier_id) REFERENCES users(id),
     FOREIGN KEY (washer_id) REFERENCES users(id)
   );
@@ -198,12 +272,16 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS expenses (
     id TEXT PRIMARY KEY,
     tenant_id TEXT NOT NULL,
+    organization_id TEXT,
+    site_id TEXT,
     cashier_id TEXT,
     description TEXT NOT NULL,
     amount REAL NOT NULL,
     category TEXT,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+    FOREIGN KEY (organization_id) REFERENCES tenants(id),
+    FOREIGN KEY (site_id) REFERENCES sites(id),
     FOREIGN KEY (cashier_id) REFERENCES users(id)
   );
 `);
@@ -274,7 +352,13 @@ async function startServer() {
       }
     }
     console.log(`[Login Success] User: ${username} (Role: ${user.role})`);
-    const token = jwt.sign({ id: user.id, tenant_id: user.tenant_id, role: user.role }, JWT_SECRET);
+    const token = jwt.sign({
+      id: user.id,
+      tenant_id: user.tenant_id,
+      organization_id: user.organization_id || user.tenant_id,
+      site_id: user.site_id,
+      role: user.role
+    }, JWT_SECRET);
     let tenant_name = "";
     let brands_enabled = 1;
     let expenses_enabled = 1;
@@ -304,16 +388,108 @@ async function startServer() {
       token,
       user: {
         id: user.id,
-      username: user.username,
-      role: user.role,
-      tenant_id: user.tenant_id,
-      tenant_name,
-      first_name: user.first_name,
-      last_name: user.last_name,
-      phone: user.phone,
-      brands_enabled,
-      expenses_enabled
-    } });
+        username: user.username,
+        role: user.role,
+        tenant_id: user.tenant_id,
+        organization_id: user.organization_id || user.tenant_id,
+        site_id: user.site_id,
+        tenant_name,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        phone: user.phone,
+        brands_enabled,
+        expenses_enabled
+      }
+    });
+  });
+
+  // --- Site Management ---
+  app.get("/api/sites", authenticate, (req: any, res) => {
+    const tenantId = req.query.tenant_id || req.query.organization_id || req.user.organization_id;
+    if (!tenantId) return res.status(400).json({ error: "Tenant ID required" });
+
+    // Managers can see sites of their organization. Super Manager can see all.
+    if (req.user.role !== "manager" && req.user.role !== "super_manager") return res.status(403).json({ error: "Forbidden" });
+
+    const sites = db.prepare("SELECT * FROM sites WHERE organization_id = ?").all(tenantId);
+    res.json(sites);
+  });
+
+  app.post("/api/sites", authenticate, (req: any, res) => {
+    if (req.user.role !== "manager" && req.user.role !== "super_manager") return res.status(403).json({ error: "Forbidden" });
+
+    const { name, tenant_id, organization_id } = req.body;
+    const targetTenantId = tenant_id || organization_id || (req.user.role !== "super_manager" ? req.user.organization_id : null);
+
+    if (!name || !targetTenantId) return res.status(400).json({ error: "Name and Tenant ID required" });
+
+    const id = Math.random().toString(36).substr(2, 9);
+    try {
+      db.prepare("INSERT INTO sites (id, organization_id, name) VALUES (?, ?, ?)").run(id, targetTenantId, name);
+      res.json({ success: true, id });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.patch("/api/sites/:id", authenticate, (req: any, res) => {
+    if (req.user.role !== "manager" && req.user.role !== "super_manager") return res.status(403).json({ error: "Forbidden" });
+    const { name, active } = req.body;
+
+    const site: any = db.prepare("SELECT organization_id FROM sites WHERE id = ?").get(req.params.id);
+    if (!site) return res.status(404).json({ error: "Site not found" });
+    if (req.user.role === "manager" && site.organization_id !== req.user.organization_id) return res.status(403).json({ error: "Forbidden" });
+
+    let query = "UPDATE sites SET ";
+    const params: any[] = [];
+    const updates: string[] = [];
+
+    if (name !== undefined) {
+      updates.push("name = ?");
+      params.push(name);
+    }
+    if (active !== undefined) {
+      updates.push("active = ?");
+      params.push(active ? 1 : 0);
+    }
+
+    if (updates.length === 0) return res.json({ success: true });
+
+    query += updates.join(", ") + " WHERE id = ?";
+    params.push(req.params.id);
+
+    db.prepare(query).run(...params);
+    res.json({ success: true });
+  });
+
+  app.delete("/api/sites/:id", authenticate, (req: any, res) => {
+    if (req.user.role !== "manager" && req.user.role !== "super_manager") return res.status(403).json({ error: "Forbidden" });
+
+    const site: any = db.prepare("SELECT organization_id FROM sites WHERE id = ?").get(req.params.id);
+    if (!site) return res.status(404).json({ error: "Site not found" });
+    if (req.user.role === "manager" && site.organization_id !== req.user.organization_id) return res.status(403).json({ error: "Forbidden" });
+
+    try {
+      db.prepare("DELETE FROM sites WHERE id = ?").run(req.params.id);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/sites/:id/users", authenticate, (req: any, res) => {
+    if (req.user.role !== "manager" && req.user.role !== "super_manager") return res.status(403).json({ error: "Forbidden" });
+
+    // Safety check: managers can only see users of their own organization
+    if (req.user.role === "manager") {
+      const site: any = db.prepare("SELECT organization_id FROM sites WHERE id = ?").get(req.params.id);
+      if (!site || site.organization_id !== req.user.organization_id) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+    }
+
+    const users = db.prepare("SELECT id, username, first_name, last_name, role, active FROM users WHERE site_id = ?").all(req.params.id);
+    res.json(users);
   });
 
   // --- Super Manager Routes (Full CRUD) ---
@@ -467,20 +643,21 @@ async function startServer() {
     // Managers can add cashiers and washers. Super Manager can add anyone.
     if (req.user.role !== "manager" && req.user.role !== "super_manager") return res.status(403).json({ error: "Forbidden" });
 
-    const { username, password, role, tenant_id, first_name, last_name, phone } = req.body;
+    const { username, password, role, tenant_id, organization_id, site_id, first_name, last_name, phone } = req.body;
 
     // Restriction for Manager
     if (req.user.role === "manager") {
-      if (role !== "cashier" && role !== "washer") return res.status(403).json({ error: "Managers can only add cashiers or washers" });
+      if (role !== "cashier" && role !== "washer" && role !== "manager") return res.status(403).json({ error: "Managers can only add managers, cashiers or washers" });
     }
 
-    const targetTenantId = req.user.role === "super_manager" ? tenant_id : req.user.tenant_id;
+    const targetOrgId = req.user.role === "super_manager" ? (organization_id || tenant_id) : req.user.organization_id;
+    const targetSiteId = site_id || null;
     const id = Math.random().toString(36).substr(2, 9);
     const hashedPassword = password ? bcrypt.hashSync(password, 10) : null;
 
     try {
-      db.prepare("INSERT INTO users (id, tenant_id, username, password, role, first_name, last_name, phone) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-        .run(id, targetTenantId, username, hashedPassword, role, first_name || null, last_name || null, phone || null);
+      db.prepare("INSERT INTO users (id, tenant_id, organization_id, site_id, username, password, role, first_name, last_name, phone) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+        .run(id, targetOrgId, targetOrgId, targetSiteId, username, hashedPassword, role, first_name || null, last_name || null, phone || null);
       res.json({ success: true, id });
     } catch (err: any) {
       res.status(400).json({ error: err.message });
@@ -490,7 +667,7 @@ async function startServer() {
   app.patch("/api/users/:id", authenticate, (req: any, res) => {
     if (req.user.role !== "manager" && req.user.role !== "super_manager") return res.status(403).json({ error: "Forbidden" });
 
-    const { first_name, last_name, phone, password, username } = req.body;
+    const { first_name, last_name, phone, password, username, site_id } = req.body;
 
     try {
       let query = "UPDATE users SET first_name = ?, last_name = ?, phone = ?";
@@ -507,6 +684,11 @@ async function startServer() {
         params.push(hashedPassword);
       }
 
+      if (site_id !== undefined) {
+        query += ", site_id = ?";
+        params.push(site_id);
+      }
+
       query += " WHERE id = ?";
       params.push(req.params.id);
 
@@ -518,11 +700,24 @@ async function startServer() {
   });
 
   app.get("/api/users", authenticate, (req: any, res) => {
-    const tenantId = req.query.tenant_id || req.user.tenant_id;
+    const organizationId = req.query.organization_id || req.user.organization_id;
+    const siteId = req.query.site_id;
+
     // Managers and Super Managers can see users
     if (req.user.role !== "manager" && req.user.role !== "super_manager" && req.user.role !== "cashier") return res.status(403).json({ error: "Forbidden" });
 
-    const users = db.prepare("SELECT id, username, role, active, first_name, last_name, phone FROM users WHERE tenant_id = ?").all(tenantId);
+    let query = "SELECT id, username, role, active, first_name, last_name, phone, site_id FROM users WHERE organization_id = ?";
+    const params = [organizationId];
+
+    if (siteId && siteId !== 'all') {
+      query += " AND site_id = ?";
+      params.push(siteId);
+    } else if (req.user.role === 'cashier' || req.user.role === 'washer') {
+      query += " AND site_id = ?";
+      params.push(req.user.site_id);
+    }
+
+    const users = db.prepare(query).all(...params);
     res.json(users);
   });
 
@@ -708,39 +903,47 @@ async function startServer() {
 
   // --- POS / Transaction Routes ---
   app.post("/api/transactions", authenticate, (req: any, res) => {
-    const { matricule, brand, phone, vehicle_type, service_label, price, washer_id } = req.body;
+    const { matricule, brand, phone, vehicle_type, service_label, price, washer_id, site_id } = req.body;
     const id = Math.random().toString(36).substr(2, 9);
+    const targetSiteId = site_id || req.user.site_id;
+
     db.prepare(`
-      INSERT INTO transactions (id, tenant_id, cashier_id, washer_id, matricule, brand, phone, vehicle_type, service_label, price)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, req.user.tenant_id, req.user.id, washer_id, matricule, brand, phone, vehicle_type, service_label, price);
+      INSERT INTO transactions (id, tenant_id, organization_id, site_id, cashier_id, washer_id, matricule, brand, phone, vehicle_type, service_label, price)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, req.user.organization_id, req.user.organization_id, targetSiteId, req.user.id, washer_id, matricule, brand, phone, vehicle_type, service_label, price);
     res.json({ success: true, id });
   });
 
   app.get("/api/transactions", authenticate, (req: any, res) => {
-    const tenantId = req.query.tenant_id || req.user.tenant_id;
+    const organizationId = req.query.organization_id || req.user.organization_id;
+    const siteId = req.query.site_id;
     const cashierId = req.query.cashier_id;
     const period = req.query.period;
     const startDate = req.query.startDate;
     const endDate = req.query.endDate;
 
     let query = `
-      SELECT t.*, c.username as cashier_name, w.username as washer_name, ten.name as tenant_name
+      SELECT t.*, c.username as cashier_name, w.username as washer_name, ten.name as tenant_name, s.name as site_name
       FROM transactions t
       JOIN users c ON t.cashier_id = c.id
       JOIN users w ON t.washer_id = w.id
-      JOIN tenants ten ON t.tenant_id = ten.id
+      JOIN tenants ten ON t.organization_id = ten.id
+      LEFT JOIN sites s ON t.site_id = s.id
       WHERE 1=1
     `;
     const params: any[] = [];
 
-    if (tenantId) {
-      query += " AND t.tenant_id = ?";
-      params.push(tenantId);
-    } else if (req.user.role !== 'super_manager') {
-      // If not super_manager and no tenantId provided (shouldn't happen with middleware but safe)
-      query += " AND t.tenant_id = ?";
-      params.push(req.user.tenant_id);
+    if (organizationId) {
+      query += " AND t.organization_id = ?";
+      params.push(organizationId);
+    }
+
+    if (siteId && siteId !== 'all') {
+      query += " AND t.site_id = ?";
+      params.push(siteId);
+    } else if (req.user.role === 'cashier' || req.user.role === 'washer') {
+      query += " AND t.site_id = ?";
+      params.push(req.user.site_id);
     }
 
     if (period === 'today') {
@@ -754,7 +957,7 @@ async function startServer() {
       params.push(startDate, endDate);
     }
 
-    if (cashierId) {
+    if (cashierId && cashierId !== 'all') {
       query += " AND t.cashier_id = ?";
       params.push(cashierId);
     } else if (req.user.role === "cashier") {
@@ -788,7 +991,8 @@ async function startServer() {
   });
 
   app.get("/api/stats", authenticate, (req: any, res) => {
-    const tenantId = req.query.tenant_id || req.user.tenant_id;
+    const organizationId = req.query.organization_id || req.user.organization_id;
+    const siteId = req.query.site_id;
     const cashierId = req.query.cashier_id;
     const period = req.query.period || '7days'; // today, 7days, 30days, custom
     const startDate = req.query.startDate;
@@ -797,7 +1001,7 @@ async function startServer() {
     if (req.user.role !== "manager" && req.user.role !== "super_manager" && req.user.role !== "cashier") return res.status(403).json({ error: "Forbidden" });
 
     let dateFilter = "";
-    const params: any[] = [tenantId];
+    const params: any[] = [organizationId];
 
     if (period === 'today') {
       dateFilter = "AND date(timestamp) = date('now')";
@@ -810,8 +1014,17 @@ async function startServer() {
       params.push(startDate, endDate);
     }
 
+    let siteFilter = "";
+    if (siteId && siteId !== 'all') {
+      siteFilter = "AND site_id = ?";
+      params.push(siteId);
+    } else if (req.user.role === 'cashier' || req.user.role === 'washer') {
+      siteFilter = "AND site_id = ?";
+      params.push(req.user.site_id);
+    }
+
     let cashierFilter = "";
-    if (cashierId) {
+    if (cashierId && cashierId !== 'all') {
       cashierFilter = "AND cashier_id = ?";
       params.push(cashierId);
     } else if (req.user.role === "cashier") {
@@ -820,27 +1033,27 @@ async function startServer() {
     }
 
     const today = new Date().toISOString().split('T')[0];
-    const dailyRevenue = db.prepare(`SELECT SUM(price) as total FROM transactions WHERE tenant_id = ? AND date(timestamp) = ? ${cashierFilter}`)
-      .get(tenantId, today, ...(cashierId || req.user.role === "cashier" ? [cashierId || req.user.id] : []));
+    const dailyRevenue = db.prepare(`SELECT SUM(price) as total FROM transactions WHERE organization_id = ? AND date(timestamp) = ? ${siteFilter} ${cashierFilter}`)
+      .get(organizationId, today, ...params.slice(1));
 
-    const totalTransactions = db.prepare(`SELECT COUNT(*) as count FROM transactions WHERE tenant_id = ? ${dateFilter} ${cashierFilter}`)
+    const totalTransactions = db.prepare(`SELECT COUNT(*) as count FROM transactions WHERE organization_id = ? ${dateFilter} ${siteFilter} ${cashierFilter}`)
       .get(...params);
 
-    const periodRevenue = db.prepare(`SELECT SUM(price) as total FROM transactions WHERE tenant_id = ? ${dateFilter} ${cashierFilter}`)
+    const periodRevenue = db.prepare(`SELECT SUM(price) as total FROM transactions WHERE organization_id = ? ${dateFilter} ${siteFilter} ${cashierFilter}`)
       .get(...params);
 
-    const periodExpenses = db.prepare(`SELECT SUM(amount) as total FROM expenses WHERE tenant_id = ? ${dateFilter} ${cashierFilter}`)
+    const periodExpenses = db.prepare(`SELECT SUM(amount) as total FROM expenses WHERE organization_id = ? ${dateFilter} ${siteFilter} ${cashierFilter}`)
       .get(...params);
 
-    const dailyExpenses = db.prepare(`SELECT SUM(amount) as total FROM expenses WHERE tenant_id = ? AND date(timestamp) = ? ${cashierFilter}`)
-      .get(tenantId, today, ...(cashierId || req.user.role === "cashier" ? [cashierId || req.user.id] : []));
+    const dailyExpenses = db.prepare(`SELECT SUM(amount) as total FROM expenses WHERE organization_id = ? AND date(timestamp) = ? ${siteFilter} ${cashierFilter}`)
+      .get(organizationId, today, ...params.slice(1));
 
     // Washer performance stats
     const washerStats = db.prepare(`
       SELECT w.username as name, COUNT(t.id) as count, SUM(t.price) as revenue
       FROM transactions t
       JOIN users w ON t.washer_id = w.id
-      WHERE t.tenant_id = ? ${dateFilter.replace('timestamp', 't.timestamp')} ${cashierFilter.replace('cashier_id', 't.cashier_id')}
+      WHERE t.organization_id = ? ${dateFilter.replace('timestamp', 't.timestamp')} ${siteFilter.replace('site_id', 't.site_id')} ${cashierFilter.replace('cashier_id', 't.cashier_id')}
       GROUP BY t.washer_id
       ORDER BY count DESC
     `).all(...params);
@@ -849,9 +1062,26 @@ async function startServer() {
     const dailyHistory = db.prepare(`
       SELECT date(timestamp) as date, SUM(price) as revenue, COUNT(*) as count
       FROM transactions
-      WHERE tenant_id = ? ${dateFilter} ${cashierFilter}
+      WHERE organization_id = ? ${dateFilter} ${siteFilter} ${cashierFilter}
       GROUP BY date(timestamp)
       ORDER BY date ASC
+    `).all(...params);
+
+    // Services breakdown
+    const servicesStats = db.prepare(`
+      SELECT service_label as name, COUNT(*) as value
+      FROM transactions
+      WHERE organization_id = ? ${dateFilter} ${siteFilter} ${cashierFilter}
+      GROUP BY service_label
+    `).all(...params);
+
+    // Sites breakdown
+    const sitesStats = db.prepare(`
+      SELECT s.name as name, SUM(t.price) as value, COUNT(t.id) as vehicles
+      FROM transactions t
+      JOIN sites s ON t.site_id = s.id
+      WHERE t.organization_id = ? ${dateFilter.replace('timestamp', 't.timestamp')} ${siteFilter.replace('site_id', 't.site_id')} ${cashierFilter.replace('cashier_id', 't.cashier_id')}
+      GROUP BY t.site_id
     `).all(...params);
 
     res.json({
@@ -861,13 +1091,16 @@ async function startServer() {
       periodExpenses: (periodExpenses as any)?.total || 0,
       totalTransactions: (totalTransactions as any)?.count || 0,
       washerStats,
-      dailyHistory
+      dailyHistory,
+      servicesStats,
+      sitesStats
     });
   });
 
   // --- Expenses API ---
   app.get("/api/expenses", authenticate, (req: any, res) => {
-    const tenantId = req.query.tenant_id || req.user.tenant_id;
+    const organizationId = req.query.organization_id || req.user.organization_id;
+    const siteId = req.query.site_id;
     const cashierId = req.query.cashier_id;
     const period = req.query.period;
     const startDate = req.query.startDate;
@@ -875,15 +1108,20 @@ async function startServer() {
 
     if (req.user.role !== "manager" && req.user.role !== "super_manager" && req.user.role !== "cashier") return res.status(403).json({ error: "Forbidden" });
 
-    let query = "SELECT e.*, u.username as cashier_name, ten.name as tenant_name FROM expenses e LEFT JOIN users u ON e.cashier_id = u.id JOIN tenants ten ON e.tenant_id = ten.id WHERE 1=1";
+    let query = "SELECT e.*, u.username as cashier_name, ten.name as tenant_name, s.name as site_name FROM expenses e LEFT JOIN users u ON e.cashier_id = u.id JOIN tenants ten ON e.organization_id = ten.id LEFT JOIN sites s ON e.site_id = s.id WHERE 1=1";
     const params: any[] = [];
 
-    if (tenantId) {
-      query += " AND e.tenant_id = ?";
-      params.push(tenantId);
-    } else if (req.user.role !== 'super_manager') {
-      query += " AND e.tenant_id = ?";
-      params.push(req.user.tenant_id);
+    if (organizationId) {
+      query += " AND e.organization_id = ?";
+      params.push(organizationId);
+    }
+
+    if (siteId && siteId !== 'all') {
+      query += " AND e.site_id = ?";
+      params.push(siteId);
+    } else if (req.user.role === 'cashier' || req.user.role === 'washer') {
+      query += " AND e.site_id = ?";
+      params.push(req.user.site_id);
     }
 
     if (period === 'today') {
@@ -897,7 +1135,7 @@ async function startServer() {
       params.push(startDate, endDate);
     }
 
-    if (cashierId) {
+    if (cashierId && cashierId !== 'all') {
       query += " AND e.cashier_id = ?";
       params.push(cashierId);
     } else if (req.user.role === "cashier") {
@@ -912,18 +1150,20 @@ async function startServer() {
   });
 
   app.post("/api/expenses", authenticate, (req: any, res) => {
-    const { description, amount, category } = req.body;
-    const tenantId = req.user.tenant_id;
+    const { description, amount, category, site_id } = req.body;
+    const organizationId = req.user.organization_id;
+    const targetSiteId = site_id || req.user.site_id;
+
     if (req.user.role !== "manager" && req.user.role !== "cashier") return res.status(403).json({ error: "Forbidden" });
 
-    const tenant = db.prepare("SELECT expenses_enabled FROM tenants WHERE id = ?").get(tenantId) as any;
+    const tenant = db.prepare("SELECT expenses_enabled FROM tenants WHERE id = ?").get(organizationId) as any;
     if (tenant && tenant.expenses_enabled === 0) {
       return res.status(403).json({ error: "Les dépenses sont désactivées pour cette caisse." });
     }
 
     const id = Math.random().toString(36).substring(2, 15);
-    db.prepare("INSERT INTO expenses (id, tenant_id, cashier_id, description, amount, category) VALUES (?, ?, ?, ?, ?, ?)")
-      .run(id, tenantId, req.user.id, description, amount, category || null);
+    db.prepare("INSERT INTO expenses (id, tenant_id, organization_id, site_id, cashier_id, description, amount, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+      .run(id, organizationId, organizationId, targetSiteId, req.user.id, description, amount, category || null);
 
     res.json({ id, description, amount, category, cashier_id: req.user.id });
   });
@@ -934,8 +1174,8 @@ async function startServer() {
     if (req.user.role === "super_manager") {
       db.prepare("DELETE FROM expenses WHERE id = ?").run(req.params.id);
     } else {
-      db.prepare("DELETE FROM expenses WHERE id = ? AND tenant_id = ?")
-        .run(req.params.id, req.user.tenant_id);
+      db.prepare("DELETE FROM expenses WHERE id = ? AND organization_id = ?")
+        .run(req.params.id, req.user.organization_id);
     }
     res.json({ success: true });
   });

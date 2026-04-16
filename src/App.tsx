@@ -1,17 +1,17 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  User, 
+ import React, { useState, useMemo, useEffect } from 'react';
+import {
+  User,
   LogIn,
-  LogOut, 
-  Search, 
-  Bike, 
-  Car, 
-  Truck, 
-  Droplets, 
-  Sparkles, 
-  Settings, 
-  Eraser, 
-  Banknote, 
+  LogOut,
+  Search,
+  Bike,
+  Car,
+  Truck,
+  Droplets,
+  Sparkles,
+  Settings,
+  Eraser,
+  Banknote,
   CheckCircle2,
   TrendingUp,
   History as HistoryIcon,
@@ -40,19 +40,20 @@ import {
   ArrowDownCircle,
   ArrowUpCircle,
   RefreshCw,
-  Trash2
+  Trash2,
+  MapPin
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
+import {
   BarChart,
   AreaChart,
   Area,
   ComposedChart,
   Bar,
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   PieChart,
   Pie,
@@ -106,6 +107,13 @@ interface Tenant {
   created_at: string;
 }
 
+interface Site {
+  id: string;
+  organization_id: string;
+  name: string;
+  active: number;
+}
+
 interface User {
   id: string;
   username: string;
@@ -114,6 +122,7 @@ interface User {
   first_name?: string;
   last_name?: string;
   phone?: string;
+  site_id?: string;
 }
 
 interface AuthUser {
@@ -121,6 +130,8 @@ interface AuthUser {
   username: string;
   role: Role;
   tenant_id?: string;
+  organization_id?: string;
+  site_id?: string;
   tenant_name?: string;
   first_name?: string;
   last_name?: string;
@@ -159,6 +170,10 @@ export default function App() {
 
   // --- App State ---
   const [view, setView] = useState<ViewType>('pos');
+  const [personnelTab, setPersonnelTab] = useState<'users' | 'sites'>('users');
+  const [sites, setSites] = useState<Site[]>([]);
+  const [selectedSiteId, setSelectedSiteId] = useState<string>('all');
+  const [newSiteName, setNewSiteName] = useState('');
   const [historyData, setHistoryData] = useState<Transaction[]>([]);
   const [revenueTrend, setRevenueTrend] = useState<any[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -172,8 +187,10 @@ export default function App() {
     periodExpenses: number;
     washerStats: { name: string; count: number; revenue: number }[];
     dailyHistory: { date: string; revenue: number; count: number }[];
+    servicesStats?: { name: string; value: number }[];
+    sitesStats?: { name: string; value: number; vehicles: number }[];
   }>({ dailyRevenue: 0, dailyExpenses: 0, totalTransactions: 0, periodRevenue: 0, periodExpenses: 0, washerStats: [], dailyHistory: [] });
-  
+
   // --- POS State ---
   const [matricule, setMatricule] = useState('');
   const [phone, setPhone] = useState('');
@@ -211,6 +228,7 @@ export default function App() {
   const [newEmployeeFirstName, setNewEmployeeFirstName] = useState('');
   const [newEmployeeLastName, setNewEmployeeLastName] = useState('');
   const [newEmployeePhone, setNewEmployeePhone] = useState('');
+  const [selectedEmployeeSiteId, setSelectedEmployeeSiteId] = useState('');
   const [newVehicleTypeLabel, setNewVehicleTypeLabel] = useState('');
   const [newBrandName, setNewBrandName] = useState('');
   const [newServiceLabel, setNewServiceLabel] = useState('');
@@ -218,6 +236,7 @@ export default function App() {
   const [showUserSuccess, setShowUserSuccess] = useState(false);
   const [createdCredentials, setCreatedCredentials] = useState<{ u: string, p: string } | null>(null);
   const [selectedDashboardTenant, setSelectedDashboardTenant] = useState<string>('all');
+  const [selectedDashboardSite, setSelectedDashboardSite] = useState<string>('all');
   const [selectedHistoryTenant, setSelectedHistoryTenant] = useState<string>('all');
   const [historyPeriod, setHistoryPeriod] = useState<'all' | 'today' | '7days' | '30days' | 'custom'>('all');
   const [historyStartDate, setHistoryStartDate] = useState('');
@@ -230,6 +249,11 @@ export default function App() {
   const [superEndDate, setSuperEndDate] = useState('');
   const [selectedCashierId, setSelectedCashierId] = useState<string>('all');
   const [showExpenseForm, setShowExpenseForm] = useState(false);
+
+  const [editSiteId, setEditSiteId] = useState('');
+  const [editRole, setEditRole] = useState<Role>('cashier');
+  const [expandedSiteId, setExpandedSiteId] = useState<string | null>(null);
+  const [siteUsers, setSiteUsers] = useState<Record<string, any[]>>({});
 
   // --- Confirmation Modal State ---
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -290,6 +314,24 @@ export default function App() {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (user?.role === 'super_manager' && selectedTenantId) {
+      fetchVehicleTypes(selectedTenantId);
+      fetchBrands(selectedTenantId);
+      fetchServices(selectedTenantId);
+      fetchUsers(selectedTenantId);
+      fetchSites(selectedTenantId);
+    }
+  }, [selectedTenantId, user]);
+
+  useEffect(() => {
+    if (user && user.role === 'super_manager' && selectedDashboardTenant !== 'all') {
+      fetchSites(selectedDashboardTenant);
+    } else {
+      setSelectedDashboardSite('all');
+    }
+  }, [selectedDashboardTenant, user]);
+
   const fetchRevenueTrend = async () => {
     if (user && (user.role === 'manager' || user.role === 'cashier')) {
       const res = await fetch('/api/stats?period=7days', { headers: { Authorization: `Bearer ${token}` } });
@@ -309,25 +351,28 @@ export default function App() {
           fetchHistory(historyPeriod, historyStartDate, historyEndDate, selectedHistoryTenant);
         }
       } else {
+        if (user.role === 'manager') {
+          fetchSites();
+        }
         fetchVehicleTypes();
         fetchBrands();
         fetchServices();
         fetchRevenueTrend();
         if (view === 'history') {
           if (user.role === 'manager') {
-            fetchHistory(managerPeriod, managerStartDate, managerEndDate);
+            fetchHistory(managerPeriod, managerStartDate, managerEndDate, undefined, selectedSiteId);
           } else {
-            fetchHistory('today');
+            fetchHistory('today', undefined, undefined, undefined, user.site_id);
           }
         } else if (view === 'global_history') {
-          fetchHistory('all');
+          fetchHistory('all', undefined, undefined, undefined, selectedSiteId);
         } else {
-          fetchHistory();
+          fetchHistory(undefined, undefined, undefined, undefined, selectedSiteId);
         }
         fetchUsers();
         if (user.role === 'manager' || user.role === 'cashier') {
-          fetchStats();
-          fetchExpenses();
+          fetchStats(undefined, undefined, undefined, undefined, undefined, selectedSiteId);
+          fetchExpenses(undefined, selectedSiteId);
         }
       }
 
@@ -341,18 +386,18 @@ export default function App() {
         } else {
           if (view === 'history') {
             if (user.role === 'manager') {
-              fetchHistory(managerPeriod, managerStartDate, managerEndDate);
+              fetchHistory(managerPeriod, managerStartDate, managerEndDate, undefined, selectedSiteId);
             } else {
-              fetchHistory('today');
+              fetchHistory('today', undefined, undefined, undefined, user.site_id);
             }
           } else if (view === 'global_history') {
-            fetchHistory(historyPeriod, historyStartDate, historyEndDate);
+            fetchHistory(historyPeriod, historyStartDate, historyEndDate, undefined, selectedSiteId);
           } else {
-            fetchHistory();
+            fetchHistory(undefined, undefined, undefined, undefined, selectedSiteId);
           }
           if (user.role === 'manager' || user.role === 'cashier') {
-            fetchStats();
-            fetchExpenses();
+            fetchStats(undefined, undefined, undefined, undefined, undefined, selectedSiteId);
+            fetchExpenses(undefined, selectedSiteId);
             fetchRevenueTrend();
           }
         }
@@ -360,7 +405,7 @@ export default function App() {
 
       return () => clearInterval(interval);
     }
-  }, [user, view, managerPeriod, managerStartDate, managerEndDate, superPeriod, superStartDate, superEndDate, selectedCashierId, selectedHistoryTenant, historyPeriod, historyStartDate, historyEndDate]);
+  }, [user, view, managerPeriod, managerStartDate, managerEndDate, superPeriod, superStartDate, superEndDate, selectedCashierId, selectedHistoryTenant, historyPeriod, historyStartDate, historyEndDate, selectedSiteId, selectedDashboardTenant, selectedDashboardSite]);
 
   const fetchUser = async () => {
     const savedUser = localStorage.getItem('wash_user');
@@ -370,6 +415,13 @@ export default function App() {
   const fetchTenants = async () => {
     const res = await fetch('/api/tenants', { headers: { Authorization: `Bearer ${token}` } });
     if (res.ok) setTenants(await res.json());
+  };
+
+  const fetchSites = async (tenantId?: string) => {
+    const tId = tenantId || user?.organization_id;
+    if (!tId) return;
+    const res = await fetch(`/api/sites?tenant_id=${tId}`, { headers: { Authorization: `Bearer ${token}` } });
+    if (res.ok) setSites(await res.json());
   };
 
   const fetchVehicleTypes = async (tenantId?: string) => {
@@ -404,7 +456,7 @@ export default function App() {
     if (res.ok) setServices(await res.json());
   };
 
-  const fetchHistory = async (period?: string, start?: string, end?: string, tenantId?: string) => {
+  const fetchHistory = async (period?: string, start?: string, end?: string, tenantId?: string, siteId?: string) => {
     let query = '';
     const params = new URLSearchParams();
     if (period && period !== 'all') params.append('period', period);
@@ -413,6 +465,7 @@ export default function App() {
       params.append('endDate', end);
     }
     if (tenantId && tenantId !== 'all') params.append('tenant_id', tenantId);
+    if (siteId && siteId !== 'all') params.append('site_id', siteId);
 
     query = params.toString() ? `?${params.toString()}` : '';
 
@@ -434,15 +487,17 @@ export default function App() {
     }
   };
 
-  const fetchStats = async (tenantId?: string, period?: string, start?: string, end?: string, cashierId?: string) => {
+  const fetchStats = async (tenantId?: string, period?: string, start?: string, end?: string, cashierId?: string, siteId?: string) => {
     const p = period || managerPeriod;
     const s = start || managerStartDate;
     const e = end || managerEndDate;
     const c = cashierId || selectedCashierId;
+    const sid = siteId || selectedSiteId;
 
     let url = `/api/stats?period=${p}`;
     if (tenantId) url += `&tenant_id=${tenantId}`;
     if (c && c !== 'all') url += `&cashier_id=${c}`;
+    if (sid && sid !== 'all') url += `&site_id=${sid}`;
     if (p === 'custom' && s && e) {
       url += `&startDate=${s}&endDate=${e}`;
     }
@@ -451,12 +506,31 @@ export default function App() {
     if (res.ok) setStats(await res.json());
   };
 
-  const fetchExpenses = async (cashierId?: string) => {
+  const fetchExpenses = async (cashierId?: string, siteId?: string, period?: string, start?: string, end?: string) => {
     const c = cashierId || selectedCashierId;
+    const sid = siteId || selectedSiteId;
+    const p = period || (user?.role === 'manager' ? 'today' : undefined);
     let url = '/api/expenses';
-    if (c && c !== 'all') url += `?cashier_id=${c}`;
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    const params = new URLSearchParams();
+    if (c && c !== 'all') params.append('cashier_id', c);
+    if (sid && sid !== 'all') params.append('site_id', sid);
+    if (p) params.append('period', p);
+    if (p === 'custom' && start && end) {
+      params.append('startDate', start);
+      params.append('endDate', end);
+    }
+
+    const query = params.toString() ? `?${params.toString()}` : '';
+    const res = await fetch(`${url}${query}`, { headers: { Authorization: `Bearer ${token}` } });
     if (res.ok) setExpenses(await res.json());
+  };
+
+  const fetchSiteUsers = async (siteId: string) => {
+    const res = await fetch(`/api/sites/${siteId}/users`, { headers: { Authorization: `Bearer ${token}` } });
+    if (res.ok) {
+      const users = await res.json();
+      setSiteUsers(prev => ({ ...prev, [siteId]: users }));
+    }
   };
 
   // --- Handlers ---
@@ -493,10 +567,22 @@ export default function App() {
   };
 
   const fetchAllData = async () => {
-    const res = await fetch('/api/admin/all-data', { headers: { Authorization: `Bearer ${token}` } });
+    if (!token) return;
+    const url = selectedDashboardTenant === 'all' ? '/api/admin/all-data' : `/api/stats?organization_id=${selectedDashboardTenant}&period=${superPeriod}${superStartDate && superEndDate ? `&startDate=${superStartDate}&endDate=${superEndDate}` : ''}${selectedDashboardSite !== 'all' ? `&site_id=${selectedDashboardSite}` : ''}`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     if (res.ok) {
       const data = await res.json();
-      setAllTransactions(data.transactions);
+      if (selectedDashboardTenant === 'all') {
+        const processedTransactions = data.transactions.map((t: any) => ({ ...t, type: 'transaction' }));
+        setAllTransactions(processedTransactions);
+        setTenants(data.tenants);
+      } else {
+        // When a single tenant is selected, we get stats-formatted data
+        setStats(data);
+        if (data.dailyHistory) {
+          setRevenueTrend(data.dailyHistory);
+        }
+      }
     }
   };
 
@@ -543,10 +629,24 @@ export default function App() {
   };
 
   const globalStats = useMemo(() => {
+    if (selectedDashboardTenant !== 'all') {
+      return {
+        totalRevenue: stats.periodRevenue,
+        totalVehicles: stats.totalTransactions,
+        dailyHistory: stats.dailyHistory,
+        revenueByTenant: stats.sitesStats || [],
+        transactionsByService: stats.servicesStats || [],
+      };
+    }
+
     let filteredTransactions = allTransactions;
 
     if (selectedDashboardTenant !== 'all') {
       filteredTransactions = filteredTransactions.filter(t => t.tenant_id === selectedDashboardTenant);
+    }
+
+    if (selectedDashboardSite !== 'all') {
+      filteredTransactions = filteredTransactions.filter(t => t.site_id === selectedDashboardSite);
     }
 
     const now = new Date();
@@ -595,7 +695,7 @@ export default function App() {
     });
 
     return { totalRevenue, revenueByTenant, transactionsByService, totalVehicles: filteredTransactions.length, dailyHistory };
-  }, [allTransactions, tenants, selectedDashboardTenant, superPeriod, superStartDate, superEndDate]);
+  }, [allTransactions, tenants, selectedDashboardTenant, selectedDashboardSite, superPeriod, superStartDate, superEndDate, stats]);
 
   const handleValidate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -621,7 +721,8 @@ export default function App() {
         vehicle_type: vehicleTypeLabel,
         service_label: selectedServiceLabel,
         price: currentPrice,
-        washer_id: selectedWasherId
+        washer_id: selectedWasherId,
+        site_id: user.site_id || (selectedSiteId !== 'all' ? selectedSiteId : undefined)
       })
     });
 
@@ -890,13 +991,15 @@ export default function App() {
 
       {/* Compact Top Bar */}
       <header className="bg-white px-4 py-3 flex items-center justify-between border-b border-slate-100 shadow-sm z-20">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 border border-slate-100">
-            <User className="w-4 h-4" />
-          </div>
-          <div>
-            <p className="text-[10px] text-slate-400 font-bold uppercase leading-none">{user.role === 'super_manager' ? 'Super Manager' : user.tenant_name || user.role}</p>
-            <p className="text-sm font-bold text-slate-800">{user.username}</p>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-slate-50 rounded-full flex items-center justify-center text-slate-400 border border-slate-100">
+              <User className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-[10px] text-slate-400 font-bold uppercase leading-none">{user.role === 'super_manager' ? 'Super Manager' : user.tenant_name || user.role}</p>
+              <p className="text-sm font-bold text-slate-800">{user.username}</p>
+            </div>
           </div>
         </div>
 
@@ -1152,7 +1255,8 @@ export default function App() {
                                   body: JSON.stringify({
                                     description: newExpenseDescription,
                                     amount: Number(newExpenseAmount),
-                                    category: newExpenseCategory
+                                    category: newExpenseCategory,
+                                    site_id: user.site_id || (selectedSiteId !== 'all' ? selectedSiteId : undefined)
                                   })
                                 });
                                 if (res.ok) {
@@ -1216,6 +1320,36 @@ export default function App() {
                 </div>
                 <TrendingUp className="w-4 h-4 text-blue-600" />
               </div>
+
+              {user.role === 'manager' && sites.length > 0 && (
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+                  <button
+                    onClick={() => {
+                      setSelectedSiteId('all');
+                      fetchHistory(managerPeriod, managerStartDate, managerEndDate, undefined, 'all');
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${
+                      selectedSiteId === 'all' ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-400 border border-slate-100'
+                    }`}
+                  >
+                    Tous les sites
+                  </button>
+                  {sites.map(site => (
+                    <button
+                      key={site.id}
+                      onClick={() => {
+                        setSelectedSiteId(site.id);
+                        fetchHistory(managerPeriod, managerStartDate, managerEndDate, undefined, site.id);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${
+                        selectedSiteId === site.id ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-400 border border-slate-100'
+                      }`}
+                    >
+                      {site.name}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                 {filteredHistoryData.length > 0 ? (
@@ -1448,6 +1582,36 @@ export default function App() {
                       ))}
                     </div>
                   )}
+
+                  {user.role === 'manager' && sites.length > 0 && (
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+                      <button
+                        onClick={() => {
+                          setSelectedSiteId('all');
+                          fetchHistory(historyPeriod, historyStartDate, historyEndDate, undefined, 'all');
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${
+                          selectedSiteId === 'all' ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-400 border border-slate-100'
+                        }`}
+                      >
+                        Tous les sites
+                      </button>
+                      {sites.map(site => (
+                        <button
+                          key={site.id}
+                          onClick={() => {
+                            setSelectedSiteId(site.id);
+                            fetchHistory(historyPeriod, historyStartDate, historyEndDate, undefined, site.id);
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${
+                            selectedSiteId === site.id ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-400 border border-slate-100'
+                          }`}
+                        >
+                          {site.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1676,6 +1840,30 @@ export default function App() {
                         className="w-full p-2 bg-slate-50 rounded-xl text-xs font-bold outline-none"
                       />
                     </div>
+                  </div>
+                )}
+
+                {selectedDashboardTenant !== 'all' && sites.length > 0 && (
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar bg-slate-50 p-2 rounded-2xl border border-slate-100">
+                    <button
+                      onClick={() => setSelectedDashboardSite('all')}
+                      className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${
+                        selectedDashboardSite === 'all' ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-400 border border-slate-100'
+                      }`}
+                    >
+                      Tous les sites
+                    </button>
+                    {sites.map(site => (
+                      <button
+                        key={site.id}
+                        onClick={() => setSelectedDashboardSite(site.id)}
+                        className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${
+                          selectedDashboardSite === site.id ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-400 border border-slate-100'
+                        }`}
+                      >
+                        {site.name}
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
@@ -2055,7 +2243,126 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* 3. Users Management */}
+                  {/* 3. Sites Management */}
+                  <div className="space-y-4">
+                    <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 px-1">
+                      <MapPin className="w-3 h-3" /> Lavages Auto (Sites)
+                    </h3>
+                    <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 space-y-4">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Nom du lavage (ex: Brillo Cocody)"
+                          value={newSiteName}
+                          onChange={(e) => setNewSiteName(e.target.value)}
+                          className="flex-1 px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold text-sm"
+                        />
+                        <button
+                          onClick={async () => {
+                            if (!newSiteName) return;
+                            const res = await fetch('/api/sites', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                              body: JSON.stringify({ tenant_id: selectedTenantId, name: newSiteName })
+                            });
+                            if (res.ok) {
+                              setNewSiteName('');
+                              fetchSites(selectedTenantId!);
+                            }
+                          }}
+                          className="p-3 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-100"
+                        >
+                          <Plus className="w-5 h-5" />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {sites.map(site => (
+                          <div key={site.id} className="space-y-2">
+                            <div className={`flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 transition-opacity ${site.active === 0 ? 'opacity-50' : ''}`}>
+                              <div
+                                className="flex items-center gap-2 cursor-pointer"
+                                onClick={() => {
+                                  if (expandedSiteId === site.id) {
+                                    setExpandedSiteId(null);
+                                  } else {
+                                    setExpandedSiteId(site.id);
+                                    fetchSiteUsers(site.id);
+                                  }
+                                }}
+                              >
+                                <span className="text-xs font-bold text-slate-700">{site.name}</span>
+                                <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${expandedSiteId === site.id ? 'rotate-180' : ''}`} />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={async () => {
+                                    await fetch(`/api/sites/${site.id}`, {
+                                      method: 'PATCH',
+                                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                      body: JSON.stringify({ active: site.active === 0 ? 1 : 0 })
+                                    });
+                                    fetchSites(selectedTenantId!);
+                                  }}
+                                  className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${
+                                    site.active === 0
+                                      ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white'
+                                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                  }`}
+                                >
+                                  {site.active === 0 ? 'Activer' : 'Désactiver'}
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    confirmAction({
+                                      title: 'Suppression',
+                                      message: 'Supprimer ce site ?',
+                                      confirmText: 'Supprimer',
+                                      type: 'danger',
+                                      onConfirm: async () => {
+                                        await fetch(`/api/sites/${site.id}`, {
+                                          method: 'DELETE',
+                                          headers: { Authorization: `Bearer ${token}` }
+                                        });
+                                        fetchSites(selectedTenantId!);
+                                      }
+                                    });
+                                  }}
+                                  className="text-slate-300 hover:text-red-500 transition-colors"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                            {expandedSiteId === site.id && (
+                              <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="bg-white rounded-xl p-3 border border-slate-100 space-y-2 mb-2"
+                              >
+                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                                  <Users className="w-2.5 h-2.5" /> Personnel assigné
+                                </p>
+                                <div className="space-y-1">
+                                  {siteUsers[site.id]?.length > 0 ? (
+                                    siteUsers[site.id].map(u => (
+                                      <div key={u.id} className="flex items-center justify-between text-[10px] py-1 border-b border-slate-50 last:border-0">
+                                        <span className="font-bold text-slate-600">{u.username}</span>
+                                        <span className="text-[8px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-400 font-black uppercase">{u.role}</span>
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <p className="text-[9px] text-slate-400 italic">Aucun personnel.</p>
+                                  )}
+                                </div>
+                              </motion.div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4. Users Management */}
                   <div className="space-y-4">
                     <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 px-1">
                       <Users className="w-3 h-3" /> Utilisateurs & Laveurs
@@ -2074,7 +2381,8 @@ export default function App() {
                               role: newEmployeeRole,
                               first_name: newEmployeeFirstName,
                               last_name: newEmployeeLastName,
-                              phone: newEmployeePhone
+                              phone: newEmployeePhone,
+                              site_id: selectedEmployeeSiteId || undefined
                             })
                           });
                           if (res.ok) {
@@ -2085,6 +2393,7 @@ export default function App() {
                             setNewEmployeeFirstName('');
                             setNewEmployeeLastName('');
                             setNewEmployeePhone('');
+                            setSelectedEmployeeSiteId('');
                             fetchUsers(selectedTenantId!);
                             setTimeout(() => {
                               setShowUserSuccess(false);
@@ -2148,6 +2457,22 @@ export default function App() {
                             className="px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-black outline-none focus:border-blue-600 focus:bg-white transition-all"
                           />
                         </div>
+                        {(newEmployeeRole === 'cashier' || newEmployeeRole === 'washer') && (
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Lavage auto (Site)</label>
+                            <select
+                              value={selectedEmployeeSiteId}
+                              onChange={(e) => setSelectedEmployeeSiteId(e.target.value)}
+                              className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-black outline-none focus:border-blue-600 focus:bg-white transition-all"
+                              required
+                            >
+                              <option value="">Choisir un site...</option>
+                              {sites.map(s => (
+                                <option key={s.id} value={s.id}>{s.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
                         <button type="submit" className="w-full py-4 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-100 font-black text-xs uppercase tracking-widest hover:bg-blue-700 transition-all">
                           Ajouter l'utilisateur
                         </button>
@@ -2163,7 +2488,10 @@ export default function App() {
                                   <p className="text-xs font-black text-slate-900">{u.first_name} {u.last_name}</p>
                                   {u.active === 0 && <span className="text-[8px] px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded-md font-black uppercase tracking-tighter">Inactif</span>}
                                 </div>
-                                <p className="text-[9px] text-slate-400 font-bold uppercase">{u.role} • {u.username} {u.phone && `• ${u.phone}`}</p>
+                                <p className="text-[9px] text-slate-400 font-bold uppercase">
+                                  {u.role} • {u.username} {u.phone && `• ${u.phone}`}
+                                  {u.site_id && sites.find(s => s.id === u.site_id) && ` • ${sites.find(s => s.id === u.site_id)?.name}`}
+                                </p>
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
@@ -2197,6 +2525,8 @@ export default function App() {
                                   setEditPhone(u.phone || '');
                                   setEditUsername(u.username || '');
                                   setEditPassword('');
+                                  setEditRole(u.role);
+                                  setEditSiteId(u.site_id || '');
                                 }}
                                 className="p-2 text-slate-300 hover:text-blue-600 transition-colors"
                               >
@@ -2866,9 +3196,13 @@ export default function App() {
                                   <p className="text-xs font-black text-slate-900">{u.first_name} {u.last_name}</p>
                                   {u.active === 0 && <span className="text-[8px] px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded-md font-black uppercase tracking-tighter">Inactif</span>}
                                 </div>
-                                <p className="text-[9px] text-slate-400 font-bold uppercase">{u.role} • {u.username} {u.phone && `• ${u.phone}`}</p>
+                                <p className="text-[9px] text-slate-400 font-bold uppercase">
+                                  {u.role} • {u.username} {u.phone && `• ${u.phone}`}
+                                  {u.site_id && sites.find(s => s.id === u.site_id) && ` • ${sites.find(s => s.id === u.site_id)?.name}`}
+                                </p>
                               </div>
                             </div>
+                            {/* General User List (Manager/Admin) */}
                             <div className="flex items-center gap-2">
                               <button
                                 onClick={() => {
@@ -2878,6 +3212,8 @@ export default function App() {
                                   setEditPhone(u.phone || '');
                                   setEditUsername(u.username || '');
                                   setEditPassword('');
+                                  setEditRole(u.role);
+                                  setEditSiteId(u.site_id || '');
                                 }}
                                 className="p-2 text-slate-300 hover:text-blue-600 transition-colors"
                               >
@@ -3138,6 +3474,27 @@ export default function App() {
                   </div>
                 </div>
 
+                {sites.length > 0 && (
+                  <div className="flex items-center gap-3 pt-2 border-t border-slate-50">
+                    <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400">
+                      <MapPin className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Filtrer par Lavage (Site)</label>
+                      <select
+                        value={selectedSiteId}
+                        onChange={(e) => setSelectedSiteId(e.target.value)}
+                        className="w-full bg-transparent text-xs font-black uppercase tracking-tighter outline-none"
+                      >
+                        <option value="all">Tous les sites</option>
+                        {sites.map(s => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
                 {managerPeriod === 'custom' && (
                   <div className="grid grid-cols-2 gap-3 pt-2">
                     <div className="space-y-1">
@@ -3305,212 +3662,405 @@ export default function App() {
               exit={{ opacity: 0, x: 20 }}
               className="absolute inset-0 p-4 space-y-6 overflow-y-auto custom-scrollbar pb-24"
             >
-              <div className="space-y-4">
-                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                  <Plus className="w-4 h-4" /> Ajouter du personnel
-                </h3>
-                <form
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    const res = await fetch('/api/users', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                      body: JSON.stringify({
-                        username: newEmployeeUsername,
-                        password: newEmployeePassword,
-                        role: newEmployeeRole,
-                        first_name: newEmployeeFirstName,
-                        last_name: newEmployeeLastName,
-                        phone: newEmployeePhone
-                      })
-                    });
-                    if (res.ok) {
-                      setCreatedCredentials({ u: newEmployeeUsername, p: newEmployeePassword });
-                      setShowUserSuccess(true);
-                      setNewEmployeeUsername('');
-                      setNewEmployeePassword('');
-                      setNewEmployeeFirstName('');
-                      setNewEmployeeLastName('');
-                      setNewEmployeePhone('');
-                      fetchUsers();
-                      setTimeout(() => {
-                        setShowUserSuccess(false);
-                        setCreatedCredentials(null);
-                      }, 10000);
-                    }
-                  }}
-                  className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 space-y-4"
+              <div className="flex bg-slate-100 p-1 rounded-2xl mb-6">
+                <button
+                  onClick={() => setPersonnelTab('users')}
+                  className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                    personnelTab === 'users' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'
+                  }`}
                 >
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nom</label>
-                      <input
-                        type="text"
-                        value={newEmployeeLastName}
-                        onChange={(e) => setNewEmployeeLastName(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Prénom</label>
-                      <input
-                        type="text"
-                        value={newEmployeeFirstName}
-                        onChange={(e) => setNewEmployeeFirstName(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Téléphone</label>
-                      <input
-                        type="text"
-                        value={newEmployeePhone}
-                        onChange={(e) => setNewEmployeePhone(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nom d'utilisateur</label>
-                      <input
-                        type="text"
-                        value={newEmployeeUsername}
-                        onChange={(e) => setNewEmployeeUsername(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Rôle</label>
-                      <select
-                        value={newEmployeeRole}
-                        onChange={(e: any) => setNewEmployeeRole(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold appearance-none"
-                      >
-                        <option value="cashier">Caissier</option>
-                        {user?.role === 'super_manager' && <option value="manager">Manager</option>}
-                        <option value="washer">Laveur</option>
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Mot de passe</label>
-                      <input
-                        type="password"
-                        value={newEmployeePassword}
-                        onChange={(e) => setNewEmployeePassword(e.target.value)}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold"
-                        placeholder="Facultatif pour laveur"
-                      />
-                    </div>
-                  </div>
-                  <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-100">
-                    Enregistrer
-                  </button>
-                </form>
+                  Personnel
+                </button>
+                <button
+                  onClick={() => setPersonnelTab('sites')}
+                  className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                    personnelTab === 'sites' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'
+                  }`}
+                >
+                  Sites (Lavage)
+                </button>
               </div>
 
-              <div className="space-y-4">
-                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                  <Users className="w-4 h-4" /> Équipe
-                </h3>
-                <div className="grid gap-3">
-                  {tenantUsers.map(u => (
-                    <div key={u.id} className={`bg-white p-4 rounded-2xl border border-slate-100 flex items-center justify-between shadow-sm transition-opacity ${u.active === 0 ? 'opacity-50' : ''}`}>
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${u.active === 0 ? 'bg-slate-50 text-slate-300' : 'bg-blue-50 text-slate-400'}`}>
-                          <User className="w-5 h-5" />
+              {personnelTab === 'sites' ? (
+                <div className="space-y-6">
+                  <div className="space-y-4">
+                    {user.role === 'super_manager' && (
+                      <>
+                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                          <Plus className="w-4 h-4" /> Ajouter un site
+                        </h3>
+                        <form
+                          onSubmit={async (e) => {
+                            e.preventDefault();
+                            if (!newSiteName) return;
+                            const res = await fetch('/api/sites', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                              body: JSON.stringify({ name: newSiteName, tenant_id: user?.organization_id })
+                            });
+                            if (res.ok) {
+                              setNewSiteName('');
+                              fetchSites();
+                            }
+                          }}
+                          className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 space-y-4"
+                        >
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nom du site</label>
+                            <input
+                              type="text"
+                              value={newSiteName}
+                              onChange={(e) => setNewSiteName(e.target.value)}
+                              className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold"
+                              placeholder="Ex: Lavage Adjamé"
+                              required
+                            />
+                          </div>
+                          <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-100">
+                            Ajouter le site
+                          </button>
+                        </form>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                      <Building2 className="w-4 h-4" /> Vos Sites
+                    </h3>
+                    <div className="grid gap-3">
+                      {sites.map(site => (
+                        <div key={site.id} className="space-y-2">
+                          <div className={`bg-white p-4 rounded-2xl border border-slate-100 flex items-center justify-between shadow-sm transition-opacity ${site.active === 0 ? 'opacity-50' : ''}`}>
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${site.active === 0 ? 'bg-slate-50 text-slate-300' : 'bg-blue-50 text-slate-400'}`}>
+                                <Building2 className="w-5 h-5" />
+                              </div>
+                              <div
+                                className="cursor-pointer"
+                                onClick={() => {
+                                  if (expandedSiteId === site.id) {
+                                    setExpandedSiteId(null);
+                                  } else {
+                                    setExpandedSiteId(site.id);
+                                    fetchSiteUsers(site.id);
+                                  }
+                                }}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-black text-slate-900">{site.name}</p>
+                                  <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform ${expandedSiteId === site.id ? 'rotate-180' : ''}`} />
+                                </div>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase">ID: {site.id}</p>
+                              </div>
+                            </div>
+                            {user.role === 'super_manager' && (
+                              <div className="flex items-center gap-3">
+                                <button
+                                  onClick={async () => {
+                                    const res = await fetch(`/api/sites/${site.id}`, {
+                                      method: 'PATCH',
+                                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                      body: JSON.stringify({ active: site.active === 1 ? 0 : 1 })
+                                    });
+                                    if (res.ok) fetchSites();
+                                  }}
+                                  className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${
+                                    site.active === 0
+                                      ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white'
+                                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                  }`}
+                                >
+                                  {site.active === 0 ? 'Activer' : 'Désactiver'}
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    confirmAction({
+                                      title: 'Suppression',
+                                      message: 'Supprimer ce site ?',
+                                      confirmText: 'Supprimer',
+                                      type: 'danger',
+                                      onConfirm: async () => {
+                                        const res = await fetch(`/api/sites/${site.id}`, {
+                                          method: 'DELETE',
+                                          headers: { Authorization: `Bearer ${token}` }
+                                        });
+                                        if (res.ok) fetchSites();
+                                      }
+                                    });
+                                  }}
+                                  className="p-1 text-slate-200 hover:text-red-500 transition-colors"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          {expandedSiteId === site.id && (
+                            <motion.div
+                              initial={{ opacity: 0, y: -10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 ml-4 space-y-3"
+                            >
+                              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                <Users className="w-3 h-3" /> Personnel assigné
+                              </p>
+                              <div className="space-y-2">
+                                {siteUsers[site.id]?.length > 0 ? (
+                                  siteUsers[site.id].map(u => (
+                                    <div key={u.id} className="flex items-center justify-between bg-white p-2 rounded-xl border border-white shadow-sm">
+                                      <div className="flex items-center gap-2">
+                                        <div className={`w-1.5 h-1.5 rounded-full ${u.role === 'manager' ? 'bg-blue-600' : 'bg-green-500'}`} />
+                                        <p className="text-[11px] font-black text-slate-700">{u.first_name} {u.last_name} <span className="text-[9px] text-slate-400 font-bold ml-1">({u.username})</span></p>
+                                      </div>
+                                      <p className="text-[9px] font-black uppercase text-slate-400">{u.role}</p>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <p className="text-[10px] text-slate-400 italic">Aucun personnel assigné à ce site.</p>
+                                )}
+                              </div>
+                            </motion.div>
+                          )}
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-black text-slate-900">{u.first_name} {u.last_name}</p>
-                            {u.active === 0 && <span className="text-[8px] px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded-md font-black uppercase tracking-tighter">Inactif</span>}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-[10px] text-slate-400 font-bold uppercase">{u.role} • {u.username}</p>
-                            {u.phone && <p className="text-[10px] text-slate-400 font-bold">• {u.phone}</p>}
-                          </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                      <Plus className="w-4 h-4" /> Ajouter du personnel
+                    </h3>
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        const res = await fetch('/api/users', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                          body: JSON.stringify({
+                            username: newEmployeeUsername,
+                            password: newEmployeePassword,
+                            role: newEmployeeRole,
+                            first_name: newEmployeeFirstName,
+                            last_name: newEmployeeLastName,
+                            phone: newEmployeePhone,
+                            site_id: selectedEmployeeSiteId
+                          })
+                        });
+                        if (res.ok) {
+                          setCreatedCredentials({ u: newEmployeeUsername, p: newEmployeePassword });
+                          setShowUserSuccess(true);
+                          setNewEmployeeUsername('');
+                          setNewEmployeePassword('');
+                          setNewEmployeeFirstName('');
+                          setNewEmployeeLastName('');
+                          setNewEmployeePhone('');
+                          fetchUsers();
+                          setTimeout(() => {
+                            setShowUserSuccess(false);
+                            setCreatedCredentials(null);
+                          }, 10000);
+                        }
+                      }}
+                      className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 space-y-4"
+                    >
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nom</label>
+                          <input
+                            type="text"
+                            value={newEmployeeLastName}
+                            onChange={(e) => setNewEmployeeLastName(e.target.value)}
+                            className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold"
+                            required
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Prénom</label>
+                          <input
+                            type="text"
+                            value={newEmployeeFirstName}
+                            onChange={(e) => setNewEmployeeFirstName(e.target.value)}
+                            className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold"
+                            required
+                          />
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        {user.role === 'super_manager' && u.role !== 'washer' && (
-                          <button
-                            onClick={async () => {
-                              const res = await fetch(`/api/admin/login-as/${u.id}`, {
-                                method: 'POST',
-                                headers: { Authorization: `Bearer ${token}` }
-                              });
-                              if (res.ok) {
-                                const data = await res.json();
-                                setToken(data.token);
-                                setUser(data.user);
-                                localStorage.setItem('wash_token', data.token);
-                                localStorage.setItem('wash_user', JSON.stringify(data.user));
-                                initialViewRef.current = false;
-                              }
-                            }}
-                            className="p-2 text-slate-300 hover:text-emerald-600 transition-colors"
-                            title="Se connecter en tant que"
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Téléphone</label>
+                          <input
+                            type="text"
+                            value={newEmployeePhone}
+                            onChange={(e) => setNewEmployeePhone(e.target.value)}
+                            className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold"
+                            required
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nom d'utilisateur</label>
+                          <input
+                            type="text"
+                            value={newEmployeeUsername}
+                            onChange={(e) => setNewEmployeeUsername(e.target.value)}
+                            className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold"
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Rôle</label>
+                          <select
+                            value={newEmployeeRole}
+                            onChange={(e: any) => setNewEmployeeRole(e.target.value)}
+                            className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold appearance-none"
                           >
-                            <LogIn className="w-4 h-4" />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => {
-                            setEditingUser(u);
-                            setEditFirstName(u.first_name || '');
-                            setEditLastName(u.last_name || '');
-                            setEditPhone(u.phone || '');
-                            setEditUsername(u.username || '');
-                            setEditPassword('');
-                          }}
-                          className="p-2 text-slate-300 hover:text-blue-600 transition-colors"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => toggleUserActive(u.id)}
-                          className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${
-                            u.active === 0
-                              ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white'
-                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                          }`}
-                        >
-                          {u.active === 0 ? 'Activer' : 'Désactiver'}
-                        </button>
-                        <div className={`w-2 h-2 rounded-full ${u.role === 'manager' ? 'bg-blue-600' : 'bg-green-500'}`} />
-                        {(user.role === 'manager' || user.role === 'super_manager') && (u.role !== 'manager' || user.role === 'super_manager') && (
-                          <button
-                            onClick={() => {
-                              confirmAction({
-                                title: 'Suppression',
-                                message: 'Supprimer cet employé ?',
-                                confirmText: 'Supprimer',
-                                type: 'danger',
-                                onConfirm: async () => {
-                                  const res = await fetch(`/api/users/${u.id}`, {
-                                    method: 'DELETE',
+                            <option value="cashier">Caissier</option>
+                            {user?.role === 'super_manager' && <option value="manager">Manager</option>}
+                            <option value="washer">Laveur</option>
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Mot de passe</label>
+                          <input
+                            type="password"
+                            value={newEmployeePassword}
+                            onChange={(e) => setNewEmployeePassword(e.target.value)}
+                            className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold"
+                            placeholder="Facultatif pour laveur"
+                          />
+                        </div>
+                      </div>
+                      {(newEmployeeRole === 'cashier' || newEmployeeRole === 'washer') && sites.length > 0 && (
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Assigner à un site</label>
+                          <select
+                            value={selectedEmployeeSiteId}
+                            onChange={(e) => setSelectedEmployeeSiteId(e.target.value)}
+                            className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:border-blue-600 font-bold appearance-none"
+                          >
+                            <option value="">Aucun site (Accès global)</option>
+                            {sites.map(site => (
+                              <option key={site.id} value={site.id}>{site.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                      <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-100">
+                        Enregistrer
+                      </button>
+                    </form>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                      <Users className="w-4 h-4" /> Équipe
+                    </h3>
+                    <div className="grid gap-3">
+                      {tenantUsers.map(u => (
+                        <div key={u.id} className={`bg-white p-4 rounded-2xl border border-slate-100 flex items-center justify-between shadow-sm transition-opacity ${u.active === 0 ? 'opacity-50' : ''}`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${u.active === 0 ? 'bg-slate-50 text-slate-300' : 'bg-blue-50 text-slate-400'}`}>
+                              <User className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-black text-slate-900">{u.first_name} {u.last_name}</p>
+                                {u.active === 0 && <span className="text-[8px] px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded-md font-black uppercase tracking-tighter">Inactif</span>}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <p className="text-[10px] text-slate-400 font-bold uppercase">{u.role} • {u.username}</p>
+                                {u.phone && <p className="text-[10px] text-slate-400 font-bold">• {u.phone}</p>}
+                                {u.site_id && (
+                                  <p className="text-[10px] text-blue-600 font-black uppercase tracking-tighter ml-1">
+                                    • {sites.find(s => s.id === u.site_id)?.name || 'Site inconnu'}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            {user.role === 'super_manager' && u.role !== 'washer' && (
+                              <button
+                                onClick={async () => {
+                                  const res = await fetch(`/api/admin/login-as/${u.id}`, {
+                                    method: 'POST',
                                     headers: { Authorization: `Bearer ${token}` }
                                   });
-                                  if (res.ok) fetchUsers();
-                                }
-                              });
-                            }}
-                            className="p-1 text-slate-200 hover:text-red-500 transition-colors"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        )}
-                      </div>
+                                  if (res.ok) {
+                                    const data = await res.json();
+                                    setToken(data.token);
+                                    setUser(data.user);
+                                    localStorage.setItem('wash_token', data.token);
+                                    localStorage.setItem('wash_user', JSON.stringify(data.user));
+                                    initialViewRef.current = false;
+                                  }
+                                }}
+                                className="p-2 text-slate-300 hover:text-emerald-600 transition-colors"
+                                title="Se connecter en tant que"
+                              >
+                                <LogIn className="w-4 h-4" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => {
+                                setEditingUser(u);
+                                setEditFirstName(u.first_name || '');
+                                setEditLastName(u.last_name || '');
+                                setEditPhone(u.phone || '');
+                                setEditUsername(u.username || '');
+                                setEditPassword('');
+                                setEditRole(u.role);
+                                setEditSiteId(u.site_id || '');
+                              }}
+                              className="p-2 text-slate-300 hover:text-blue-600 transition-colors"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => toggleUserActive(u.id)}
+                              className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${
+                                u.active === 0
+                                  ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white'
+                                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                              }`}
+                            >
+                              {u.active === 0 ? 'Activer' : 'Désactiver'}
+                            </button>
+                            <div className={`w-2 h-2 rounded-full ${u.role === 'manager' ? 'bg-blue-600' : 'bg-green-500'}`} />
+                            {(user.role === 'manager' || user.role === 'super_manager') && (u.role !== 'manager' || user.role === 'super_manager') && (
+                              <button
+                                onClick={() => {
+                                  confirmAction({
+                                    title: 'Suppression',
+                                    message: 'Supprimer cet employé ?',
+                                    confirmText: 'Supprimer',
+                                    type: 'danger',
+                                    onConfirm: async () => {
+                                      const res = await fetch(`/api/users/${u.id}`, {
+                                        method: 'DELETE',
+                                        headers: { Authorization: `Bearer ${token}` }
+                                      });
+                                      if (res.ok) fetchUsers();
+                                    }
+                                  });
+                                }}
+                                className="p-1 text-slate-200 hover:text-red-500 transition-colors"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </motion.main>
           )}
         </AnimatePresence>
@@ -3806,6 +4356,34 @@ export default function App() {
                         className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-blue-600 transition-colors text-slate-900 font-bold"
                       />
                     </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Rôle</label>
+                        <select
+                          value={editRole}
+                          onChange={(e: any) => setEditRole(e.target.value)}
+                          className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-blue-600 transition-colors text-slate-900 font-bold"
+                        >
+                          <option value="cashier">Caissier</option>
+                          <option value="manager">Manager</option>
+                          <option value="washer">Laveur</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Site affecté</label>
+                        <select
+                          value={editSiteId}
+                          onChange={(e) => setEditSiteId(e.target.value)}
+                          className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-blue-600 transition-colors text-slate-900 font-bold"
+                          disabled={editRole === 'manager'}
+                        >
+                          <option value="">Aucun site</option>
+                          {sites.map(s => (
+                            <option key={s.id} value={s.id}>{s.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
                   </>
                 ) : (
                   <>
@@ -3864,7 +4442,9 @@ export default function App() {
                             last_name: editLastName,
                             phone: editPhone,
                             username: editUsername,
-                            password: editPassword || undefined
+                            password: editPassword || undefined,
+                            role: editRole,
+                            site_id: editRole === 'manager' ? null : (editSiteId || null)
                           })
                         });
                         if (res.ok) {
